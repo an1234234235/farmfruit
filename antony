@@ -1,145 +1,228 @@
--- Auto Key Presser GUI v7 - by NTBA
+-- Auto Key Presser v8 - NTBA
+-- Fix: R sẽ giữ đến khi Haki cạn rồi thả, sau đó nghỉ 20s rồi lặp
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
-
 local player = Players.LocalPlayer
 
--- Tạo GUI
+-- ---------- GUI ----------
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoKeyPresserGUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = game:GetService("CoreGui")
 
--- Frame chính
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 310)
+frame.Size = UDim2.new(0, 260, 0, 360)
 frame.Position = UDim2.new(0, 50, 0, 50)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
-frame.Visible = true
 frame.Parent = screenGui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = frame
+local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0,8); corner.Parent = frame
+local stroke = Instance.new("UIStroke"); stroke.Thickness = 1; stroke.Transparency = 0.6; stroke.Parent = frame
 
-local stroke = Instance.new("UIStroke")
-stroke.Thickness = 1.2
-stroke.Transparency = 0.6
-stroke.Color = Color3.fromRGB(200, 200, 200)
-stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-stroke.Parent = frame
-
--- Tiêu đề
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
+title.Size = UDim2.new(1,0,0,32)
+title.Position = UDim2.new(0,0,0,0)
 title.BackgroundTransparency = 1
-title.Text = "Auto Key Presser v7"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Text = "Auto Key Presser v8"
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 22
+title.TextSize = 20
+title.TextColor3 = Color3.new(1,1,1)
 title.Parent = frame
 
--- Tác giả
 local author = Instance.new("TextLabel")
-author.Size = UDim2.new(1, 0, 0, 20)
-author.Position = UDim2.new(0, 0, 1, -25)
+author.Size = UDim2.new(1,0,0,18)
+author.Position = UDim2.new(0,0,1,-22)
 author.BackgroundTransparency = 1
 author.Text = "Tác giả: NTBA"
-author.TextColor3 = Color3.fromRGB(150, 150, 150)
 author.Font = Enum.Font.SourceSansItalic
-author.TextSize = 16
+author.TextSize = 14
+author.TextColor3 = Color3.fromRGB(160,160,160)
 author.Parent = frame
 
--- Danh sách phím
-local keys = {"Z", "X", "C", "V", "R"}
+-- Buttons container start Y
+local startY = 40
+
+local keys = {"Z","X","C","V","R"}
 local toggles = {}
 
--- Hàm auto nhấn cho Z,X,C,V
-local function autoPress(key)
-    while toggles[key] do
-        VirtualInputManager:SendKeyEvent(true, key, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, key, false, game)
-        task.wait(0.5)
-    end
-end
-
--- Nút toggle cho từng phím
-for i, key in ipairs(keys) do
+local function makeButton(key, y)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.Position = UDim2.new(0, 10, 0, 40 * i + 10)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Position = UDim2.new(0, 10, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.BorderSizePixel = 0
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.SourceSans
-    btn.TextSize = 20
+    btn.TextSize = 18
+    btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Text = key .. ": OFF"
     btn.Parent = frame
+    return btn
+end
 
+for i,key in ipairs(keys) do
     toggles[key] = false
-
+    local btn = makeButton(key, startY + (i-1)*46)
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
         btn.Text = key .. ": " .. (toggles[key] and "ON" or "OFF")
-
+        -- start autoPress for Z/X/C/V
         if key ~= "R" and toggles[key] then
-            task.spawn(function() autoPress(key) end)
+            task.spawn(function()
+                while toggles[key] do
+                    local kc = Enum.KeyCode[key]
+                    pcall(function() VirtualInputManager:SendKeyEvent(true, kc, false, game) end)
+                    task.wait(0.1)
+                    pcall(function() VirtualInputManager:SendKeyEvent(false, kc, false, game) end)
+                    task.wait(0.5)
+                end
+            end)
         end
     end)
 end
 
--- Auto giữ R theo thanh Haki
-local waitDelay = 20 -- nghỉ 20 giây
-local isRHeld = false
+-- Status label (show Haki % + state)
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -20, 0, 60)
+statusLabel.Position = UDim2.new(0, 10, 0, startY + (#keys)*46)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Font = Enum.Font.SourceSans
+statusLabel.TextSize = 14
+statusLabel.TextColor3 = Color3.fromRGB(200,200,200)
+statusLabel.Text = "Haki: N/A\nState: Idle"
+statusLabel.TextWrapped = true
+statusLabel.TextYAlignment = Enum.TextYAlignment.Top
+statusLabel.Parent = frame
+
+-- ---------- Utilities ----------
+local function safeFindHaki()
+    -- Try common path first:
+    local ok, haki = pcall(function()
+        return player.PlayerGui.HealthBar and player.PlayerGui.HealthBar.Frame and player.PlayerGui.HealthBar.Frame:FindFirstChild("Haki")
+    end)
+    if ok and haki and haki:IsA("GuiObject") then return haki end
+
+    -- Otherwise try PressQ_Haki path (some games)
+    ok, haki = pcall(function()
+        return player.PlayerGui:FindFirstChild("PressQ_Haki") and player.PlayerGui.PressQ_Haki.HealthBar.Frame:FindFirstChild("Haki")
+    end)
+    if ok and haki and haki:IsA("GuiObject") then return haki end
+
+    -- Fallback: scan PlayerGui for an object named "Haki" or similar
+    for _,v in ipairs(player.PlayerGui:GetDescendants()) do
+        if v:IsA("GuiObject") and v.Name:lower():find("haki") then
+            return v
+        end
+    end
+
+    return nil
+end
+
+local function getBarPercent(bar)
+    if not bar then return nil end
+    -- Try Size.X.Scale first
+    local ok, size = pcall(function() return bar.Size end)
+    if ok and typeof(size) == "UDim2" then
+        -- prefer Scale if present (Scale can be 0..1)
+        local sx = size.X.Scale
+        if sx and type(sx) == "number" and sx >= 0 and sx <= 1 then
+            return math.clamp(sx,0,1)
+        end
+        -- fallback to Absolute sizes if Offset used
+        local parent = bar.Parent
+        if parent and parent:IsA("GuiObject") and parent.AbsoluteSize and parent.AbsoluteSize.X and parent.AbsoluteSize.X > 0 then
+            return math.clamp(bar.AbsoluteSize.X / parent.AbsoluteSize.X, 0, 1)
+        end
+    end
+    -- Check for NumberValue inside bar or parent
+    local nv = bar:FindFirstChildWhichIsA("NumberValue") or bar:FindFirstChildWhichIsA("IntValue")
+    if nv then
+        return tonumber(nv.Value)
+    end
+    -- not found
+    return nil
+end
+
+-- ---------- Auto R logic: looped, robust ----------
+local waitDelay = 20 -- seconds to wait after Haki empties
+local fullThreshold = 0.99
+local emptyThreshold = 0.05
 
 task.spawn(function()
+    local hakiBar = safeFindHaki()
     while true do
-        if toggles["R"] then
-            local success, err = pcall(function()
-                local hakiBar = player.PlayerGui.HealthBar.Frame.Haki
-                local percent = hakiBar.Size.X.Scale
-
-                if percent >= 0.99 and not isRHeld then
-                    VirtualInputManager:SendKeyEvent(true, "R", false, game)
-                    isRHeld = true
-                    print("[AUTO R] Giữ R - Haki:", percent)
-                end
-
-                if percent <= 0.05 and isRHeld then
-                    VirtualInputManager:SendKeyEvent(false, "R", false, game)
-                    isRHeld = false
-                    print("[AUTO R] Thả R - nghỉ", waitDelay, "giây")
-
-                    task.wait(waitDelay)
-                end
-            end)
-
-            if not success then
-                warn("[AUTO R] Không tìm thấy thanh Haki!")
-            end
-        else
-            if isRHeld then
-                VirtualInputManager:SendKeyEvent(false, "R", false, game)
-                isRHeld = false
-                print("[AUTO R] Đã thả R do toggle tắt.")
-            end
-            task.wait(1)
+        if not hakiBar or not hakiBar.Parent then
+            hakiBar = safeFindHaki() -- try find again if missing
         end
 
-        task.wait(0.2)
+        if toggles["R"] then
+            -- wait for Haki to be full
+            statusLabel.Text = "Haki: searching...\nState: Waiting for full"
+            repeat
+                local percent = getBarPercent(hakiBar)
+                if percent then
+                    statusLabel.Text = string.format("Haki: %.0f%%\nState: Waiting for full", percent*100)
+                else
+                    statusLabel.Text = "Haki: N/A\nState: Waiting for full"
+                end
+                if percent and percent >= fullThreshold then break end
+                if not toggles["R"] then break end
+                task.wait(0.15)
+            until false
+
+            if not toggles["R"] then
+                -- user turned off
+                statusLabel.Text = "Haki: -\nState: Idle (toggle off)"
+                task.wait(0.2)
+                continue
+            end
+
+            -- press and hold R
+            pcall(function() VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game) end)
+            statusLabel.Text = "Haki: Holding\nState: Pressed R (holding)"
+            local isHeld = true
+
+            -- keep holding until empty OR toggle off OR Haki object disappears
+            repeat
+                local percent = getBarPercent(hakiBar)
+                if percent then
+                    statusLabel.Text = string.format("Haki: %.0f%%\nState: Holding R", percent*100)
+                else
+                    statusLabel.Text = "Haki: N/A\nState: Holding R"
+                end
+                if percent and percent <= emptyThreshold then break end
+                if not toggles["R"] then break end
+                if not hakiBar or not hakiBar.Parent then break end
+                task.wait(0.12)
+            until false
+
+            -- release R if still held
+            pcall(function() VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game) end)
+            statusLabel.Text = "Haki: Empty\nState: Released R"
+            -- wait full waitDelay seconds (or until toggled off)
+            local waited = 0
+            while waited < waitDelay and toggles["R"] do
+                statusLabel.Text = string.format("Haki: Cooling (wait %ds)\nState: Idle", math.ceil(waitDelay - waited))
+                task.wait(0.5)
+                waited = waited + 0.5
+            end
+        else
+            -- toggled off: ensure R is released and sleep
+            pcall(function() VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game) end)
+            statusLabel.Text = "Haki: -\nState: Idle (toggle off)"
+            task.wait(0.5)
+        end
+        task.wait(0.05)
     end
 end)
 
--- Ẩn/hiện GUI bằng RightControl
+-- hide/show GUI
 local lastToggle = 0
 RunService.Heartbeat:Connect(function()
     if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
