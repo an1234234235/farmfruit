@@ -1,8 +1,8 @@
--- AutoFruit & Skills by NTBA
+-- AutoFruit & Skills Script - NTBA
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local VIM = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
 local settings = {
@@ -14,36 +14,50 @@ local settings = {
     haki = false
 }
 
--- Tạo GUI
+-- GUI setup
 local gui = Instance.new("ScreenGui")
-gui.Name = "AutoFruitGui"
+gui.Name = "AutoFruitGui_NTBA"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
 gui.Enabled = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 220, 0, 300)
-frame.Position = UDim2.new(0, 20, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.Size = UDim2.new(0, 240, 0, 330)
+frame.Position = UDim2.new(0, 15, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BorderSizePixel = 0
 frame.ClipsDescendants = true
 
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundTransparency = 1
 title.Text = "AutoFruit & Skills - NTBA"
-title.TextColor3 = Color3.fromRGB(120, 255, 120)
+title.TextColor3 = Color3.fromRGB(100, 255, 100)
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 20
+title.TextSize = 22
+title.TextStrokeTransparency = 0.7
 
-local uilist = Instance.new("UIListLayout", frame)
-uilist.Padding = UDim.new(0, 8)
-uilist.SortOrder = Enum.SortOrder.LayoutOrder
+local author = Instance.new("TextLabel", frame)
+author.Size = UDim2.new(1, -10, 0, 20)
+author.Position = UDim2.new(0, 10, 1, -25)
+author.BackgroundTransparency = 1
+author.Text = "Tác giả: NTBA"
+author.TextColor3 = Color3.fromRGB(80, 200, 80)
+author.Font = Enum.Font.SourceSansItalic
+author.TextSize = 16
+author.TextXAlignment = Enum.TextXAlignment.Right
+author.TextStrokeTransparency = 0.8
 
+local layout = Instance.new("UIListLayout", frame)
+layout.Padding = UDim.new(0, 10)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.VerticalAlignment = Enum.VerticalAlignment.Top
+
+-- Toggle button creator
 local function createToggle(name)
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     btn.TextColor3 = Color3.fromRGB(220, 220, 220)
     btn.Font = Enum.Font.SourceSansBold
     btn.TextSize = 18
@@ -54,10 +68,11 @@ local function createToggle(name)
         local key = name:lower()
         settings[key] = not settings[key]
         btn.Text = name .. ": " .. (settings[key] and "ON" or "OFF")
-        btn.BackgroundColor3 = settings[key] and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(40, 40, 40)
+        btn.BackgroundColor3 = settings[key] and Color3.fromRGB(60, 140, 60) or Color3.fromRGB(50, 50, 50)
     end)
 end
 
+-- Tạo các toggle
 createToggle("AutoFruit")
 createToggle("Z")
 createToggle("X")
@@ -65,48 +80,31 @@ createToggle("C")
 createToggle("V")
 createToggle("Haki")
 
--- Bật tắt GUI bằng Ctrl phải
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
+-- Bật tắt GUI bằng phím Ctrl phải (RightControl)
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.RightControl then
         gui.Enabled = not gui.Enabled
     end
 end)
 
--- Hàm gửi phím an toàn, không spam quá nhanh
+-- Hàm gửi phím an toàn, tránh spam nhanh
 local function sendKey(key)
-    VirtualInputManager:SendKeyEvent(true, key, false, game)
+    VIM:SendKeyEvent(true, key, false, game)
     task.wait(0.1)
-    VirtualInputManager:SendKeyEvent(false, key, false, game)
+    VIM:SendKeyEvent(false, key, false, game)
 end
 
--- Vòng lặp chính auto nhấn phím
+-- Loop auto nhấn phím
 task.spawn(function()
     while true do
+        task.wait(1)
         if settings.autofruit then
-            if settings.z then
-                sendKey(Enum.KeyCode.Z)
-                print("Auto press Z")
-            end
-            if settings.x then
-                sendKey(Enum.KeyCode.X)
-                print("Auto press X")
-            end
-            if settings.c then
-                sendKey(Enum.KeyCode.C)
-                print("Auto press C")
-            end
-            if settings.v then
-                sendKey(Enum.KeyCode.V)
-                print("Auto press V")
-            end
-            if settings.haki then
-                sendKey(Enum.KeyCode.R)
-                print("Auto press R (Haki)")
-            end
-            task.wait(1) -- delay giữa các lần nhấn
-        else
-            task.wait(1)
+            if settings.z then sendKey(Enum.KeyCode.Z) end
+            if settings.x then sendKey(Enum.KeyCode.X) end
+            if settings.c then sendKey(Enum.KeyCode.C) end
+            if settings.v then sendKey(Enum.KeyCode.V) end
+            if settings.haki then sendKey(Enum.KeyCode.R) end
         end
     end
 end)
