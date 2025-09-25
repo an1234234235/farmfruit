@@ -1,4 +1,4 @@
--- Auto Key Presser GUI v3 - by NTBA
+-- Auto Key Presser GUI v5 - by NTBA
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -14,9 +14,9 @@ screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = game:GetService("CoreGui") -- Để không mất khi reset
 
--- Tạo bảng chính (Frame)
+-- Tạo Frame chính
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 350)
+frame.Size = UDim2.new(0, 220, 0, 310)
 frame.Position = UDim2.new(0, 50, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -33,7 +33,7 @@ corner.Parent = frame
 -- Viền mờ
 local stroke = Instance.new("UIStroke")
 stroke.Thickness = 1.2
-stroke.Transparency = 0.6 -- Độ mờ (0 = rõ, 1 = vô hình)
+stroke.Transparency = 0.6
 stroke.Color = Color3.fromRGB(200, 200, 200)
 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 stroke.Parent = frame
@@ -64,7 +64,7 @@ author.Parent = frame
 local keys = {"Z", "X", "C", "V", "R"}
 local toggles = {}
 
--- Hàm auto nhấn phím
+-- Hàm auto nhấn phím (Z,X,C,V)
 local function autoPress(key)
     while toggles[key] do
         VirtualInputManager:SendKeyEvent(true, key, false, game)
@@ -74,7 +74,25 @@ local function autoPress(key)
     end
 end
 
--- Tạo nút cho từng phím
+-- Hàm tìm thanh tím dựa vào màu (trong PlayerGui)
+local function findPurpleBar(guiObject)
+    if guiObject:IsA("Frame") or guiObject:IsA("ImageLabel") then
+        local c = guiObject.BackgroundColor3 or guiObject.ImageColor3
+        if c then
+            local r, g, b = c.R, c.G, c.B
+            if r < 0.3 and g < 0.05 and b > 0.5 then
+                return guiObject
+            end
+        end
+    end
+    for _, child in pairs(guiObject:GetChildren()) do
+        local found = findPurpleBar(child)
+        if found then return found end
+    end
+    return nil
+end
+
+-- Tạo nút bật tắt cho từng phím
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
@@ -92,64 +110,46 @@ for i, key in ipairs(keys) do
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
         btn.Text = key .. ": " .. (toggles[key] and "ON" or "OFF")
-        if key ~= "R" then
-            if toggles[key] then
-                task.spawn(function() autoPress(key) end)
-            end
-        else
-            -- Phím R xử lý riêng ở dưới
-            if not toggles["R"] then
-                -- Nếu tắt R, nhả phím nếu đang giữ
-                VirtualInputManager:SendKeyEvent(false, "R", false, game)
-            end
+
+        if key ~= "R" and toggles[key] then
+            task.spawn(function() autoPress(key) end)
         end
     end)
 end
 
--- Tìm thanh tím trong PlayerGui
-local function findPurpleBar(guiObject)
-    if guiObject:IsA("Frame") or guiObject:IsA("ImageLabel") then
-        local c = guiObject.BackgroundColor3 or guiObject.ImageColor3
-        if c then
-            local r, g, b = c.R, c.G, c.B
-            -- Kiểm tra màu tím gần đúng (màu của thanh trong hình)
-            if r < 0.3 and g < 0.05 and b > 0.5 then
-                return guiObject
-            end
-        end
-    end
-
-    for _, child in pairs(guiObject:GetChildren()) do
-        local found = findPurpleBar(child)
-        if found then return found end
-    end
-
-    return nil
-end
-
-local purpleBar = findPurpleBar(player:WaitForChild("PlayerGui"))
-if not purpleBar then
-    warn("Không tìm thấy thanh tím!")
-end
-
+-- Biến lưu trạng thái giữ phím R
 local isRHeld = false
 
--- Kiểm tra và tự động giữ phím R dựa vào thanh tím và toggle
+-- Lấy thanh tím (lấy lại khi nhân vật respawn)
+local purpleBar = nil
+local function updatePurpleBar()
+    purpleBar = findPurpleBar(player:WaitForChild("PlayerGui"))
+    if not purpleBar then
+        warn("Không tìm thấy thanh màu tím!")
+    end
+end
+updatePurpleBar()
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    updatePurpleBar()
+end)
+
+-- Loop kiểm tra giữ thả phím R theo thanh tím
 RunService.Heartbeat:Connect(function()
     if toggles["R"] and purpleBar then
-        local fillPercent = purpleBar.Size.X.Scale
-        if fillPercent >= 0.9 then
-            if not isRHeld then
-                VirtualInputManager:SendKeyEvent(true, "R", false, game)
-                isRHeld = true
-            end
-        else
-            if isRHeld then
-                VirtualInputManager:SendKeyEvent(false, "R", false, game)
-                isRHeld = false
-            end
+        local fillPercent = purpleBar.Size.X.Scale or 0
+
+        if not isRHeld and fillPercent >= 0.9 then
+            -- Thanh >= 90% thì giữ R
+            VirtualInputManager:SendKeyEvent(true, "R", false, game)
+            isRHeld = true
+        elseif isRHeld and fillPercent <= 0.1 then
+            -- Thanh <= 10% thì thả R
+            VirtualInputManager:SendKeyEvent(false, "R", false, game)
+            isRHeld = false
         end
     else
+        -- Nếu tắt R hoặc không có thanh thì thả phím nếu đang giữ
         if isRHeld then
             VirtualInputManager:SendKeyEvent(false, "R", false, game)
             isRHeld = false
@@ -157,7 +157,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Nhấn RightControl để ẩn/hiện GUI
+-- Ẩn/hiện GUI bằng phím RightControl
 local lastToggle = 0
 RunService.Heartbeat:Connect(function()
     if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
