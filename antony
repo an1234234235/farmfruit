@@ -1,11 +1,10 @@
--- AutoFruitGUI.lua
+-- AutoFruit & Skills by NTBA
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
--- ⚙️ State Toggle
 local settings = {
     autofruit = false,
     z = false,
@@ -15,58 +14,37 @@ local settings = {
     haki = false
 }
 
--- 🧱 Create GUI
+-- Tạo GUI
 local gui = Instance.new("ScreenGui")
-gui.Name = "AutoFruitControl"
+gui.Name = "AutoFruitGui"
 gui.ResetOnSpawn = false
 gui.Parent = player:WaitForChild("PlayerGui")
-gui.Enabled = false -- Mặc định ẩn
+gui.Enabled = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 220, 0, 320)
+frame.Size = UDim2.new(0, 220, 0, 300)
 frame.Position = UDim2.new(0, 20, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BorderSizePixel = 0
 frame.ClipsDescendants = true
-frame.AnchorPoint = Vector2.new(0, 0)
 
--- Title
 local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "Auto Fruit Control"
-title.TextColor3 = Color3.fromRGB(170, 255, 170)
+title.Text = "AutoFruit & Skills - NTBA"
+title.TextColor3 = Color3.fromRGB(120, 255, 120)
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 22
-title.TextStrokeTransparency = 0.8
+title.TextSize = 20
 
--- Author label
-local author = Instance.new("TextLabel", frame)
-author.Size = UDim2.new(1, 0, 0, 20)
-author.Position = UDim2.new(0, 0, 0, 300)
-author.BackgroundTransparency = 1
-author.Text = "Tác giả: NTBA"
-author.TextColor3 = Color3.fromRGB(100, 255, 100)
-author.Font = Enum.Font.SourceSansItalic
-author.TextSize = 16
-author.TextStrokeTransparency = 0.9
-author.TextXAlignment = Enum.TextXAlignment.Right
-
--- Layout for toggles
 local uilist = Instance.new("UIListLayout", frame)
 uilist.Padding = UDim.new(0, 8)
 uilist.SortOrder = Enum.SortOrder.LayoutOrder
-uilist.VerticalAlignment = Enum.VerticalAlignment.Top
-uilist:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    frame.Size = UDim2.new(0, 220, 0, uilist.AbsoluteContentSize.Y + 40)
-end)
 
--- 🔘 Toggle Button Creator
 local function createToggle(name)
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
     btn.Font = Enum.Font.SourceSansBold
     btn.TextSize = 18
     btn.Text = name .. ": OFF"
@@ -76,11 +54,10 @@ local function createToggle(name)
         local key = name:lower()
         settings[key] = not settings[key]
         btn.Text = name .. ": " .. (settings[key] and "ON" or "OFF")
-        btn.BackgroundColor3 = settings[key] and Color3.fromRGB(60, 120, 60) or Color3.fromRGB(50, 50, 50)
+        btn.BackgroundColor3 = settings[key] and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(40, 40, 40)
     end)
 end
 
--- 🛠 Add Toggles
 createToggle("AutoFruit")
 createToggle("Z")
 createToggle("X")
@@ -88,7 +65,7 @@ createToggle("C")
 createToggle("V")
 createToggle("Haki")
 
--- 🚪 GUI toggle bằng phím Ctrl phải (RightControl)
+-- Bật tắt GUI bằng Ctrl phải
 UIS.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.RightControl then
@@ -96,43 +73,40 @@ UIS.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- 🚀 Auto nhấn phím Z/X/C/V và Haki khi bật AutoFruit
+-- Hàm gửi phím an toàn, không spam quá nhanh
+local function sendKey(key)
+    VirtualInputManager:SendKeyEvent(true, key, false, game)
+    task.wait(0.1)
+    VirtualInputManager:SendKeyEvent(false, key, false, game)
+end
+
+-- Vòng lặp chính auto nhấn phím
 task.spawn(function()
     while true do
-        task.wait(1)
         if settings.autofruit then
             if settings.z then
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+                sendKey(Enum.KeyCode.Z)
                 print("Auto press Z")
             end
             if settings.x then
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.X, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                sendKey(Enum.KeyCode.X)
                 print("Auto press X")
             end
             if settings.c then
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                sendKey(Enum.KeyCode.C)
                 print("Auto press C")
             end
             if settings.v then
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.V, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.V, false, game)
+                sendKey(Enum.KeyCode.V)
                 print("Auto press V")
             end
             if settings.haki then
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+                sendKey(Enum.KeyCode.R)
                 print("Auto press R (Haki)")
             end
+            task.wait(1) -- delay giữa các lần nhấn
         else
-            task.wait(1) -- Nếu autofruit tắt thì delay lâu hơn để giảm tài nguyên
+            task.wait(1)
         end
     end
 end)
