@@ -74,24 +74,6 @@ local function autoPress(key)
     end
 end
 
--- Hàm tìm thanh tím dựa vào màu (trong PlayerGui)
-local function findPurpleBar(guiObject)
-    if guiObject:IsA("Frame") or guiObject:IsA("ImageLabel") then
-        local c = guiObject.BackgroundColor3 or guiObject.ImageColor3
-        if c then
-            local r, g, b = c.R, c.G, c.B
-            if r < 0.3 and g < 0.05 and b > 0.5 then
-                return guiObject
-            end
-        end
-    end
-    for _, child in pairs(guiObject:GetChildren()) do
-        local found = findPurpleBar(child)
-        if found then return found end
-    end
-    return nil
-end
-
 -- Tạo nút bật tắt cho từng phím
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
@@ -120,50 +102,19 @@ end
 -- Biến lưu trạng thái giữ phím R
 local isRHeld = false
 
--- Lấy thanh tím (lấy lại khi nhân vật respawn)
-local purpleBar = nil
-local function updatePurpleBar()
-    purpleBar = findPurpleBar(player:WaitForChild("PlayerGui"))
-    if not purpleBar then
-        warn("Không tìm thấy thanh màu tím!")
-    end
-end
-updatePurpleBar()
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    updatePurpleBar()
-end)
+-- Thread xử lý giữ thả phím R 5 giây lặp lại
+task.spawn(function()
+    while true do
+        if toggles["R"] then
+            if not isRHeld then
+                VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                isRHeld = true
+            end
+            task.wait(5) -- giữ phím R trong 5 giây
 
--- Loop kiểm tra giữ thả phím R theo thanh tím
-RunService.Heartbeat:Connect(function()
-    if toggles["R"] and purpleBar then
-        local fillPercent = purpleBar.Size.X.Scale or 0
-
-        if not isRHeld and fillPercent >= 0.9 then
-            -- Thanh >= 90% thì giữ R
-            VirtualInputManager:SendKeyEvent(true, "R", false, game)
-            isRHeld = true
-        elseif isRHeld and fillPercent <= 0.1 then
-            -- Thanh <= 10% thì thả R
-            VirtualInputManager:SendKeyEvent(false, "R", false, game)
-            isRHeld = false
-        end
-    else
-        -- Nếu tắt R hoặc không có thanh thì thả phím nếu đang giữ
-        if isRHeld then
-            VirtualInputManager:SendKeyEvent(false, "R", false, game)
-            isRHeld = false
-        end
-    end
-end)
-
--- Ẩn/hiện GUI bằng phím RightControl
-local lastToggle = 0
-RunService.Heartbeat:Connect(function()
-    if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-        if tick() - lastToggle > 0.3 then
-            frame.Visible = not frame.Visible
-            lastToggle = tick()
-        end
-    end
-end)
+            if isRHeld then
+                VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                isRHeld = false
+            end
+            task.wait(5) -- thả phím R trong 5 giây
+        else
