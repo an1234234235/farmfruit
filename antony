@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 -- Main GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -19,7 +20,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0,450,0,220)
 MainFrame.Position = UDim2.new(0.5,-225,0.1,0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(245,245,245)
-MainFrame.BackgroundTransparency = 0.15 -- hơi trong suốt
+MainFrame.BackgroundTransparency = 0.15
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
@@ -40,6 +41,47 @@ local tabCorner = Instance.new("UICorner")
 tabCorner.CornerRadius = UDim.new(0,12)
 tabCorner.Parent = TabBar
 
+-- Kéo thả GUI
+do
+    local dragging = false
+    local dragInput, mousePos, framePos
+
+    local function update(input)
+        local delta = input.Position - mousePos
+        MainFrame.Position = UDim2.new(
+            0,
+            math.clamp(framePos.X + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - MainFrame.AbsoluteSize.X),
+            0,
+            math.clamp(framePos.Y + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - MainFrame.AbsoluteSize.Y)
+        )
+    end
+
+    TabBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            mousePos = input.Position
+            framePos = MainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    TabBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
 -- Content Holder
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Size = UDim2.new(1,0,1,-40)
@@ -52,6 +94,24 @@ local tabs = { {Name="Farm Fruit", Icon="🍎"}, {Name="Farm Haki", Icon="⚡"} 
 local buttons = {}
 local currentTab = nil
 
+-- Content frames
+local fruitFrame = Instance.new("Frame")
+fruitFrame.Size = UDim2.new(1,0,1,0)
+fruitFrame.Position = UDim2.new(0,0,1,0)
+fruitFrame.BackgroundTransparency = 1
+fruitFrame.Name = "Farm FruitContent"
+fruitFrame.Visible = false
+fruitFrame.Parent = ContentFrame
+
+local hakiFrame = Instance.new("Frame")
+hakiFrame.Size = UDim2.new(1,0,1,0)
+hakiFrame.Position = UDim2.new(0,0,1,0)
+hakiFrame.BackgroundTransparency = 1
+hakiFrame.Name = "Farm HakiContent"
+hakiFrame.Visible = false
+hakiFrame.Parent = ContentFrame
+
+-- Chức năng chuyển tab
 local function switchTab(tabName)
     for name, btn in pairs(buttons) do
         local colorGoal = (name==tabName) and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
@@ -62,8 +122,15 @@ local function switchTab(tabName)
 
     for _, child in ipairs(ContentFrame:GetChildren()) do
         if child:IsA("Frame") then
-            local goalY = (child.Name == tabName.."Content") and 0 or 20
-            TweenService:Create(child,TweenInfo.new(0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,goalY)}):Play()
+            if child.Name == tabName.."Content" then
+                child.Visible = true
+                TweenService:Create(child,TweenInfo.new(0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
+                    {Position=UDim2.new(0,0,0,0)}):Play()
+            else
+                TweenService:Create(child,TweenInfo.new(0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
+                    {Position=UDim2.new(0,0,1,0)}):Play()
+                delay(0.3,function() child.Visible = false end)
+            end
         end
     end
 end
@@ -93,23 +160,6 @@ for i, tab in ipairs(tabs) do
         TweenService:Create(btn,TweenInfo.new(0.2,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=colorGoal}):Play()
     end)
 end
-
--- Content frames
-local fruitFrame = Instance.new("Frame")
-fruitFrame.Size = UDim2.new(1,0,1,0)
-fruitFrame.Position = UDim2.new(0,0,0,0)
-fruitFrame.BackgroundTransparency = 1
-fruitFrame.Visible = true
-fruitFrame.Name = "Farm FruitContent"
-fruitFrame.Parent = ContentFrame
-
-local hakiFrame = Instance.new("Frame")
-hakiFrame.Size = UDim2.new(1,0,1,0)
-hakiFrame.Position = UDim2.new(0,0,0,20)
-hakiFrame.BackgroundTransparency = 1
-hakiFrame.Visible = true
-hakiFrame.Name = "Farm HakiContent"
-hakiFrame.Parent = ContentFrame
 
 switchTab("Farm Fruit")
 
