@@ -1,120 +1,46 @@
--- Safe Auto Fruit Script by NTBA (Test bản)
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- ... (các phần trên giữ nguyên)
 
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local vim_ = game:GetService("VirtualInputManager")
-
-local player = Players.LocalPlayer
-local character = player:WaitForChild("Character")
-local playerGui = player:WaitForChild("PlayerGui")
-
-local settings = {
-    autofruit = false,
-    z = false,
-    x = false,
-    c = false,
-    v = false,
-    haki = false
-}
-
-local gui = Instance.new("ScreenGui")
-gui.Name = "CoreUI"
-gui.ResetOnSpawn = false
-gui.Parent = playerGui
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 340)
-frame.Position = UDim2.new(0, 20, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Parent = gui
-
-local uilist = Instance.new("UIListLayout", frame)
-uilist.Padding = UDim.new(0, 5)
-uilist.FillDirection = Enum.FillDirection.Vertical
-uilist.SortOrder = Enum.SortOrder.LayoutOrder
-
-local authorLabel = Instance.new("TextLabel", frame)
-authorLabel.Size = UDim2.new(1, -10, 0, 25)
-authorLabel.Position = UDim2.new(0, 5, 0, 0)
-authorLabel.BackgroundTransparency = 1
-authorLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-authorLabel.Font = Enum.Font.SourceSansBold
-authorLabel.TextSize = 18
-authorLabel.Text = "Tác giả: NTBA"
-
-local toggleButton = Instance.new("TextButton", frame)
-toggleButton.Size = UDim2.new(1, -10, 0, 30)
-toggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.Font = Enum.Font.SourceSansBold
-toggleButton.TextSize = 16
-toggleButton.Text = "Thu gọn 🔽"
-
-local isMinimized = false
-local toggleElements = {}
-
-local function createToggle(name)
-    local btn = Instance.new("TextButton", frame)
-    btn.Size = UDim2.new(1, -10, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 18
-    btn.Text = name .. ": OFF"
-
-    table.insert(toggleElements, btn)
-
-    btn.MouseButton1Click:Connect(function()
-        local key = name:lower()
-        settings[key] = not settings[key]
-        btn.Text = name .. ": " .. (settings[key] and "ON" or "OFF")
-        btn.BackgroundColor3 = settings[key] and Color3.fromRGB(60, 120, 60) or Color3.fromRGB(50, 50, 50)
-    end)
-end
-
-createToggle("AutoFruit")
-createToggle("Z")
-createToggle("X")
-createToggle("C")
-createToggle("V")
-createToggle("Haki")
-
-toggleButton.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    toggleButton.Text = isMinimized and "Mở rộng ▶" or "Thu gọn 🔽"
-    for _, element in pairs(toggleElements) do
-        element.Visible = not isMinimized
-    end
-end)
-
-gui.Enabled = true
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        gui.Enabled = not gui.Enabled
-    end
-end)
-
+-- Auto key press loop
 task.spawn(function()
     while true do
-        task.wait(1.2 + math.random(0, 3)/10)
+        task.wait(1)
 
         if settings.autofruit then
-            local function pressKey(key)
-                vim_:SendKeyEvent(true, key, false, game)
-                task.wait(0.05)
-                vim_:SendKeyEvent(false, key, false, game)
+            if settings.haki then
+                vim:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                task.wait(0.1)
+                vim:SendKeyEvent(false, Enum.KeyCode.R, false, game)
             end
-
-            if settings.haki then pressKey(Enum.KeyCode.R) end
-            if settings.z then pressKey(Enum.KeyCode.Z) end
-            if settings.x then pressKey(Enum.KeyCode.X) end
-            if settings.c then pressKey(Enum.KeyCode.C) end
-            if settings.v then pressKey(Enum.KeyCode.V) end
+            if settings.z then
+                vim:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+                task.wait(0.1)
+                vim:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+            end
+            if settings.x then
+                vim:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+                task.wait(0.1)
+                vim:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+            end
+            if settings.c then
+                vim:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                task.wait(0.1)
+                vim:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+            end
+            if settings.v then
+                vim:SendKeyEvent(true, Enum.KeyCode.V, false, game)
+                task.wait(0.1)
+                vim:SendKeyEvent(false, Enum.KeyCode.V, false, game)
+            end
         end
+    end
+end)
+
+-- 👉 THÊM PHẦN NÀY Ở CUỐI
+local UIS = game:GetService("UserInputService")
+gui.Enabled = true
+UIS.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Enum.KeyCode.F4 then
+        gui.Enabled = not gui.Enabled
     end
 end)
