@@ -1,5 +1,13 @@
--- Auto Key Presser GUI v5 - by NTBA
+--[[
+    Auto Key Presser GUI v6 - by NTBA
+    ---------------------------------
+    🚀 Tính năng:
+      - GUI bật/tắt auto nhấn phím (Z, X, C, V, R)
+      - R thông minh: tự động giữ khi thanh Haki đầy, thả khi cạn, nghỉ 4 giây rồi lặp lại
+      - Có thể ẩn/hiện GUI bằng phím RightControl
+--]]
 
+-- 🛠 Dịch vụ Roblox
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -7,14 +15,13 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- Tạo GUI
+-- 🌌 GUI chính
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoKeyPresserGUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
-screenGui.Parent = game:GetService("CoreGui") -- Để không mất khi reset
+screenGui.Parent = game:GetService("CoreGui")
 
--- Tạo Frame chính
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 220, 0, 310)
 frame.Position = UDim2.new(0, 50, 0, 50)
@@ -25,12 +32,11 @@ frame.Draggable = true
 frame.Visible = true
 frame.Parent = screenGui
 
--- Bo góc
+-- 🎨 Trang trí GUI
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = frame
 
--- Viền mờ
 local stroke = Instance.new("UIStroke")
 stroke.Thickness = 1.2
 stroke.Transparency = 0.6
@@ -38,10 +44,8 @@ stroke.Color = Color3.fromRGB(200, 200, 200)
 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 stroke.Parent = frame
 
--- Tiêu đề
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "Auto Key Presser"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -49,7 +53,6 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 22
 title.Parent = frame
 
--- Tác giả
 local author = Instance.new("TextLabel")
 author.Size = UDim2.new(1, 0, 0, 20)
 author.Position = UDim2.new(0, 0, 1, -25)
@@ -60,11 +63,11 @@ author.Font = Enum.Font.SourceSansItalic
 author.TextSize = 16
 author.Parent = frame
 
--- Danh sách phím
+-- 🎮 Danh sách phím
 local keys = {"Z", "X", "C", "V", "R"}
 local toggles = {}
 
--- Hàm auto nhấn phím (Z,X,C,V)
+-- 🔁 Auto nhấn phím Z, X, C, V
 local function autoPress(key)
     while toggles[key] do
         VirtualInputManager:SendKeyEvent(true, key, false, game)
@@ -74,7 +77,7 @@ local function autoPress(key)
     end
 end
 
--- Tạo nút bật tắt cho từng phím
+-- 🖲️ Tạo nút toggle trong GUI
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
@@ -99,27 +102,32 @@ for i, key in ipairs(keys) do
     end)
 end
 
--- Biến lưu trạng thái giữ phím R và thời gian
+-- ⚡ Auto giữ/thả R theo thanh Haki
 local isRHeld = false
-local lastToggleTime = 0
-local holdDuration = 5 -- giây giữ phím R
-local releaseDuration = 5 -- giây thả phím R
+local waitDelay = 4 -- nghỉ 4 giây trước khi nhấn lại
 
--- Loop kiểm tra giữ thả phím R theo thời gian
 RunService.Heartbeat:Connect(function()
     if toggles["R"] then
-        local currentTime = tick()
-        if not isRHeld then
-            if currentTime - lastToggleTime >= releaseDuration then
-                VirtualInputManager:SendKeyEvent(true, "R", false, game)
-                isRHeld = true
-                lastToggleTime = currentTime
-            end
-        else
-            if currentTime - lastToggleTime >= holdDuration then
-                VirtualInputManager:SendKeyEvent(false, "R", false, game)
-                isRHeld = false
-                lastToggleTime = currentTime
+        local bar = player.PlayerGui:FindFirstChild("PressQ_Haki")
+        if bar then
+            local healthBar = bar:FindFirstChild("HealthBar")
+            if healthBar and healthBar:FindFirstChild("Frame") and healthBar.Frame:FindFirstChild("Haki") then
+                local hakiBar = healthBar.Frame.Haki
+                if hakiBar:IsA("Frame") then
+                    local percent = hakiBar.Size.X.Scale
+
+                    -- Nếu full → giữ R
+                    if percent >= 0.99 and not isRHeld then
+                        VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                        isRHeld = true
+
+                    -- Nếu gần hết → thả R và nghỉ 4 giây
+                    elseif percent <= 0.05 and isRHeld then
+                        VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                        isRHeld = false
+                        task.wait(waitDelay)
+                    end
+                end
             end
         end
     else
@@ -130,7 +138,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Ẩn/hiện GUI bằng phím RightControl
+-- ⌨️ Ẩn/hiện GUI bằng RightControl
 local lastToggle = 0
 RunService.Heartbeat:Connect(function()
     if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
