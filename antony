@@ -60,8 +60,8 @@ author.Font = Enum.Font.SourceSansItalic
 author.TextSize = 16
 author.Parent = frame
 
--- Danh sách phím
-local keys = {"Z", "X", "C", "V", "R"}
+-- Danh sách phím (trừ R vì R sẽ được xử lý riêng)
+local keys = {"Z", "X", "C", "V"}
 local toggles = {}
 
 -- Hàm auto nhấn phím
@@ -74,7 +74,7 @@ local function autoPress(key)
     end
 end
 
--- Tạo nút cho từng phím
+-- Tạo nút cho từng phím Z, X, C, V
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
@@ -97,6 +97,67 @@ for i, key in ipairs(keys) do
         end
     end)
 end
+
+-- Phím R sẽ xử lý riêng, không có nút bấm
+local rToggle = true
+local isRHeld = false
+
+-- Hàm tìm thanh tím dựa vào màu sắc
+local function findPurpleBar(guiObject)
+    if guiObject:IsA("Frame") or guiObject:IsA("ImageLabel") then
+        local c = guiObject.BackgroundColor3 or guiObject.ImageColor3
+        if c then
+            local r, g, b = c.R, c.G, c.B
+            -- Kiểm tra màu tím gần đúng (màu của thanh trong hình)
+            if r < 0.3 and g < 0.05 and b > 0.5 then
+                return guiObject
+            end
+        end
+    end
+
+    for _, child in pairs(guiObject:GetChildren()) do
+        local found = findPurpleBar(child)
+        if found then return found end
+    end
+
+    return nil
+end
+
+local purpleBar = findPurpleBar(player:WaitForChild("PlayerGui"))
+if not purpleBar then
+    warn("Không tìm thấy thanh tím!")
+end
+
+-- Hàm tự động giữ phím R khi thanh tím >= 0.9, nhả khi < 0.9
+local function autoHoldR()
+    while rToggle do
+        if purpleBar then
+            local fillPercent = purpleBar.Size.X.Scale
+            if fillPercent >= 0.9 then
+                if not isRHeld then
+                    VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                    isRHeld = true
+                    print("Giữ phím R - thanh tím đầy hoặc gần đầy")
+                end
+            else
+                if isRHeld then
+                    VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                    isRHeld = false
+                    print("Nhả phím R - thanh tím chưa đầy")
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+
+    -- Nhả phím R khi tắt tính năng
+    if isRHeld then
+        VirtualInputManager:SendKeyEvent(false, "R", false, game)
+        isRHeld = false
+    end
+end
+
+task.spawn(autoHoldR)
 
 -- Nhấn RightControl để ẩn/hiện GUI
 local lastToggle = 0
