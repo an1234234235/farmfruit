@@ -1,5 +1,6 @@
 --// Tạo GUI
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
@@ -10,7 +11,7 @@ screenGui.Name = "AutoPressGui"
 screenGui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 220, 0, 280)
+frame.Size = UDim2.new(0, 220, 0, 310) -- tăng chiều cao để thêm dòng tác giả
 frame.Position = UDim2.new(0, 50, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -24,6 +25,17 @@ title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 22
 title.Parent = frame
+
+-- Dòng chữ tác giả
+local authorLabel = Instance.new("TextLabel")
+authorLabel.Size = UDim2.new(1, 0, 0, 20)
+authorLabel.Position = UDim2.new(0, 0, 1, -25) -- nằm dưới cùng của frame
+authorLabel.BackgroundTransparency = 1
+authorLabel.Text = "Tác giả: NTBA"
+authorLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+authorLabel.Font = Enum.Font.SourceSansItalic
+authorLabel.TextSize = 16
+authorLabel.Parent = frame
 
 local keys = {"Z", "X", "C", "V", "R"}
 local toggles = {}
@@ -61,3 +73,11 @@ for i, key in ipairs(keys) do
         end
     end)
 end
+
+-- Bật/tắt hiện GUI bằng phím RightControl
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        frame.Visible = not frame.Visible
+    end
+end)
