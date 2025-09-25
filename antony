@@ -1,5 +1,9 @@
---// Full Farm UI Script Nâng Cấp
+-- Xoá GUI cũ nếu tồn tại
+local player = game.Players.LocalPlayer
+local old = player:FindFirstChild("PlayerGui"):FindFirstChild("FarmUI")
+if old then old:Destroy() end
 
+-- Services
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -9,13 +13,13 @@ local RunService = game:GetService("RunService")
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FarmUI"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 220)
-MainFrame.Position = UDim2.new(0.5, -225, 0.1, 0)
+MainFrame.Size = UDim2.new(0,450,0,220)
+MainFrame.Position = UDim2.new(0.5,-225,0.1,0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(245,245,245)
-MainFrame.BackgroundTransparency = 0.15
+MainFrame.BackgroundTransparency = 0.15 -- hơi trong suốt
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
