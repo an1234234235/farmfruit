@@ -102,7 +102,7 @@ end
 -- Biến lưu trạng thái giữ phím R
 local isRHeld = false
 
--- Thread xử lý giữ thả phím R 5 giây lặp lại
+-- Xử lý giữ thả phím R 5 giây giữ, 5 giây thả, lặp lại
 task.spawn(function()
     while true do
         if toggles["R"] then
@@ -118,7 +118,6 @@ task.spawn(function()
             end
             task.wait(5) -- thả phím R trong 5 giây
         else
-            -- Nếu toggle tắt, đảm bảo phím thả
             if isRHeld then
                 VirtualInputManager:SendKeyEvent(false, "R", false, game)
                 isRHeld = false
