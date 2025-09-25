@@ -118,3 +118,23 @@ task.spawn(function()
             end
             task.wait(5) -- thả phím R trong 5 giây
         else
+            -- Nếu toggle tắt, đảm bảo phím thả
+            if isRHeld then
+                VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                isRHeld = false
+            end
+            task.wait(0.1)
+        end
+    end
+end)
+
+-- Ẩn/hiện GUI bằng phím RightControl
+local lastToggle = 0
+RunService.Heartbeat:Connect(function()
+    if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
+        if tick() - lastToggle > 0.3 then
+            frame.Visible = not frame.Visible
+            lastToggle = tick()
+        end
+    end
+end)
