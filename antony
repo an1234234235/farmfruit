@@ -1,110 +1,63 @@
--- AutoFruit & Skills Script - NTBA
-
+--// Tạo GUI
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-local VIM = game:GetService("VirtualInputManager")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-local settings = {
-    autofruit = false,
-    z = false,
-    x = false,
-    c = false,
-    v = false,
-    haki = false
-}
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoPressGui"
+screenGui.Parent = playerGui
 
--- GUI setup
-local gui = Instance.new("ScreenGui")
-gui.Name = "AutoFruitGui_NTBA"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-gui.Enabled = false
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 240, 0, 330)
-frame.Position = UDim2.new(0, 15, 0, 100)
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 220, 0, 280)
+frame.Position = UDim2.new(0, 50, 0, 50)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
-frame.ClipsDescendants = true
+frame.Parent = screenGui
 
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 35)
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
-title.Text = "AutoFruit & Skills - NTBA"
-title.TextColor3 = Color3.fromRGB(100, 255, 100)
+title.Text = "Auto Key Presser"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 22
-title.TextStrokeTransparency = 0.7
+title.Parent = frame
 
-local author = Instance.new("TextLabel", frame)
-author.Size = UDim2.new(1, -10, 0, 20)
-author.Position = UDim2.new(0, 10, 1, -25)
-author.BackgroundTransparency = 1
-author.Text = "Tác giả: NTBA"
-author.TextColor3 = Color3.fromRGB(80, 200, 80)
-author.Font = Enum.Font.SourceSansItalic
-author.TextSize = 16
-author.TextXAlignment = Enum.TextXAlignment.Right
-author.TextStrokeTransparency = 0.8
+local keys = {"Z", "X", "C", "V", "R"}
+local toggles = {}
 
-local layout = Instance.new("UIListLayout", frame)
-layout.Padding = UDim.new(0, 10)
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.VerticalAlignment = Enum.VerticalAlignment.Top
+local function autoPressKey(key)
+    while toggles[key] do
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+        wait(0.5)
+    end
+end
 
--- Toggle button creator
-local function createToggle(name)
-    local btn = Instance.new("TextButton", frame)
+for i, key in ipairs(keys) do
+    local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 18
-    btn.Text = name .. ": OFF"
-    btn.AutoButtonColor = true
+    btn.Position = UDim2.new(0, 10, 0, 40 * i + 10)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BorderSizePixel = 0
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 20
+    btn.Text = key .. ": OFF"
+    btn.Parent = frame
+
+    toggles[key] = false
 
     btn.MouseButton1Click:Connect(function()
-        local key = name:lower()
-        settings[key] = not settings[key]
-        btn.Text = name .. ": " .. (settings[key] and "ON" or "OFF")
-        btn.BackgroundColor3 = settings[key] and Color3.fromRGB(60, 140, 60) or Color3.fromRGB(50, 50, 50)
+        toggles[key] = not toggles[key]
+        if toggles[key] then
+            btn.Text = key .. ": ON"
+            spawn(function() autoPressKey(key) end)
+        else
+            btn.Text = key .. ": OFF"
+        end
     end)
 end
-
--- Tạo các toggle
-createToggle("AutoFruit")
-createToggle("Z")
-createToggle("X")
-createToggle("C")
-createToggle("V")
-createToggle("Haki")
-
--- Bật tắt GUI bằng phím Ctrl phải (RightControl)
-UIS.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightControl then
-        gui.Enabled = not gui.Enabled
-    end
-end)
-
--- Hàm gửi phím an toàn, tránh spam nhanh
-local function sendKey(key)
-    VIM:SendKeyEvent(true, key, false, game)
-    task.wait(0.1)
-    VIM:SendKeyEvent(false, key, false, game)
-end
-
--- Loop auto nhấn phím
-task.spawn(function()
-    while true do
-        task.wait(1)
-        if settings.autofruit then
-            if settings.z then sendKey(Enum.KeyCode.Z) end
-            if settings.x then sendKey(Enum.KeyCode.X) end
-            if settings.c then sendKey(Enum.KeyCode.C) end
-            if settings.v then sendKey(Enum.KeyCode.V) end
-            if settings.haki then sendKey(Enum.KeyCode.R) end
-        end
-    end
-end)
