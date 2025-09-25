@@ -134,30 +134,22 @@ player.CharacterAdded:Connect(function()
     updatePurpleBar()
 end)
 
--- Biến lưu trạng thái giữ phím R và thời gian
-local isRHeld = false
-local lastToggleTime = 0
-local holdDuration = 5 -- giây giữ phím R
-local releaseDuration = 5 -- giây thả phím R
-
--- Loop kiểm tra giữ thả phím R theo thời gian
+-- Loop kiểm tra giữ thả phím R theo thanh tím
 RunService.Heartbeat:Connect(function()
-    if toggles["R"] then
-        local currentTime = tick()
-        if not isRHeld then
-            if currentTime - lastToggleTime >= releaseDuration then
-                VirtualInputManager:SendKeyEvent(true, "R", false, game)
-                isRHeld = true
-                lastToggleTime = currentTime
-            end
-        else
-            if currentTime - lastToggleTime >= holdDuration then
-                VirtualInputManager:SendKeyEvent(false, "R", false, game)
-                isRHeld = false
-                lastToggleTime = currentTime
-            end
+    if toggles["R"] and purpleBar then
+        local fillPercent = purpleBar.Size.X.Scale or 0
+
+        if not isRHeld and fillPercent >= 0.9 then
+            -- Thanh >= 90% thì giữ R
+            VirtualInputManager:SendKeyEvent(true, "R", false, game)
+            isRHeld = true
+        elseif isRHeld and fillPercent <= 0.1 then
+            -- Thanh <= 10% thì thả R
+            VirtualInputManager:SendKeyEvent(false, "R", false, game)
+            isRHeld = false
         end
     else
+        -- Nếu tắt R hoặc không có thanh thì thả phím nếu đang giữ
         if isRHeld then
             VirtualInputManager:SendKeyEvent(false, "R", false, game)
             isRHeld = false
