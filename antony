@@ -1,13 +1,5 @@
---[[
-    Auto Key Presser GUI v6 - by NTBA
-    ---------------------------------
-    🚀 Tính năng:
-      - GUI bật/tắt auto nhấn phím (Z, X, C, V, R)
-      - R thông minh: tự động giữ khi thanh Haki đầy, thả khi cạn, nghỉ 4 giây rồi lặp lại
-      - Có thể ẩn/hiện GUI bằng phím RightControl
---]]
+-- Auto Key Presser GUI v6 - by NTBA
 
--- 🛠 Dịch vụ Roblox
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -15,7 +7,7 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- 🌌 GUI chính
+-- GUI chính
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoKeyPresserGUI"
 screenGui.ResetOnSpawn = false
@@ -32,7 +24,6 @@ frame.Draggable = true
 frame.Visible = true
 frame.Parent = screenGui
 
--- 🎨 Trang trí GUI
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
 corner.Parent = frame
@@ -46,6 +37,7 @@ stroke.Parent = frame
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "Auto Key Presser"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -63,11 +55,11 @@ author.Font = Enum.Font.SourceSansItalic
 author.TextSize = 16
 author.Parent = frame
 
--- 🎮 Danh sách phím
+-- Danh sách phím
 local keys = {"Z", "X", "C", "V", "R"}
 local toggles = {}
 
--- 🔁 Auto nhấn phím Z, X, C, V
+-- Hàm auto nhấn phím (Z,X,C,V)
 local function autoPress(key)
     while toggles[key] do
         VirtualInputManager:SendKeyEvent(true, key, false, game)
@@ -77,7 +69,7 @@ local function autoPress(key)
     end
 end
 
--- 🖲️ Tạo nút toggle trong GUI
+-- Tạo nút toggle
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
@@ -102,43 +94,45 @@ for i, key in ipairs(keys) do
     end)
 end
 
--- ⚡ Auto giữ/thả R theo thanh Haki
+-- Auto giữ/thả R theo thanh Haki
 local isRHeld = false
-local waitDelay = 4 -- nghỉ 4 giây trước khi nhấn lại
+local waitDelay = 4 -- nghỉ 4 giây sau khi thả
 
 RunService.Heartbeat:Connect(function()
     if toggles["R"] then
-        local bar = player.PlayerGui:FindFirstChild("PressQ_Haki")
-        if bar then
-            local healthBar = bar:FindFirstChild("HealthBar")
-            if healthBar and healthBar:FindFirstChild("Frame") and healthBar.Frame:FindFirstChild("Haki") then
-                local hakiBar = healthBar.Frame.Haki
-                if hakiBar:IsA("Frame") then
-                    local percent = hakiBar.Size.X.Scale
+        local success, err = pcall(function()
+            local hakiBar = player.PlayerGui.HealthBar.Frame.Haki
+            local percent = hakiBar.Size.X.Scale
 
-                    -- Nếu full → giữ R
-                    if percent >= 0.99 and not isRHeld then
-                        VirtualInputManager:SendKeyEvent(true, "R", false, game)
-                        isRHeld = true
+            -- Nếu đầy gần 100% và chưa giữ thì nhấn giữ R
+            if percent >= 0.99 and not isRHeld then
+                VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                isRHeld = true
+                print("[AUTO R] Giữ R - Haki:", percent)
 
-                    -- Nếu gần hết → thả R và nghỉ 4 giây
-                    elseif percent <= 0.05 and isRHeld then
-                        VirtualInputManager:SendKeyEvent(false, "R", false, game)
-                        isRHeld = false
-                        task.wait(waitDelay)
-                    end
-                end
+            -- Nếu gần cạn và đang giữ thì thả R + nghỉ 4 giây
+            elseif percent <= 0.05 and isRHeld then
+                VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                isRHeld = false
+                print("[AUTO R] Thả R - Haki:", percent)
+                task.wait(waitDelay)
             end
+        end)
+
+        if not success then
+            warn("[AUTO R] Không tìm thấy thanh Haki! Kiểm tra đường dẫn.")
         end
     else
+        -- Nếu toggle tắt thì đảm bảo thả R
         if isRHeld then
             VirtualInputManager:SendKeyEvent(false, "R", false, game)
             isRHeld = false
+            print("[AUTO R] Đã thả R do toggle tắt.")
         end
     end
 end)
 
--- ⌨️ Ẩn/hiện GUI bằng RightControl
+-- Ẩn/hiện GUI bằng RightControl
 local lastToggle = 0
 RunService.Heartbeat:Connect(function()
     if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
