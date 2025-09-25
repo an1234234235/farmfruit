@@ -1,4 +1,4 @@
--- Auto Key Presser GUI v6 - by NTBA
+-- Auto Key Presser GUI v7 - by NTBA
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -96,10 +96,11 @@ end
 
 -- Auto giữ/thả R theo thanh Haki
 local isRHeld = false
+local isCoolingDown = false
 local waitDelay = 4 -- nghỉ 4 giây sau khi thả
 
 RunService.Heartbeat:Connect(function()
-    if toggles["R"] then
+    if toggles["R"] and not isCoolingDown then
         local success, err = pcall(function()
             local hakiBar = player.PlayerGui.HealthBar.Frame.Haki
             local percent = hakiBar.Size.X.Scale
@@ -110,12 +111,18 @@ RunService.Heartbeat:Connect(function()
                 isRHeld = true
                 print("[AUTO R] Giữ R - Haki:", percent)
 
-            -- Nếu gần cạn và đang giữ thì thả R + nghỉ 4 giây
+            -- Nếu gần cạn và đang giữ thì thả R
             elseif percent <= 0.05 and isRHeld then
                 VirtualInputManager:SendKeyEvent(false, "R", false, game)
                 isRHeld = false
                 print("[AUTO R] Thả R - Haki:", percent)
-                task.wait(waitDelay)
+
+                -- Bắt đầu cooldown 4 giây (không chặn Heartbeat)
+                isCoolingDown = true
+                task.spawn(function()
+                    task.wait(waitDelay)
+                    isCoolingDown = false
+                end)
             end
         end)
 
