@@ -1,208 +1,103 @@
--- Auto Key Presser v13 - Modern UI Style
--- Inspired by Dribbble design
--- Tác giả: NTBA (customized)
+--// UI Ngang Farm Script
+-- Copy lên GitHub là chạy
 
-local Players = game:GetService("Players")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
+-- Services
 local UserInputService = game:GetService("UserInputService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local GuiService = game:GetService("GuiService")
+local RunService = game:GetService("RunService")
 
-local player = Players.LocalPlayer
+-- Main GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FarmUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- GUI Root
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AutoKeyPresserUI"
-screenGui.IgnoreGuiInset = true
-screenGui.ResetOnSpawn = false
-screenGui.Parent = game:GetService("CoreGui")
-
--- Main Frame
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 420, 0, 260)
-mainFrame.Position = UDim2.new(0.5, -210, 0.5, -130)
-mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-mainFrame.BorderSizePixel = 0
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.Parent = screenGui
-
-local mainCorner = Instance.new("UICorner", mainFrame)
-mainCorner.CornerRadius = UDim.new(0, 14)
-
-local mainShadow = Instance.new("ImageLabel")
-mainShadow.Size = UDim2.new(1, 40, 1, 40)
-mainShadow.Position = UDim2.new(0, -20, 0, -20)
-mainShadow.BackgroundTransparency = 1
-mainShadow.Image = "rbxassetid://1316045217" -- shadow asset
-mainShadow.ImageColor3 = Color3.fromRGB(0,0,0)
-mainShadow.ImageTransparency = 0.3
-mainShadow.ScaleType = Enum.ScaleType.Slice
-mainShadow.SliceCenter = Rect.new(10,10,118,118)
-mainShadow.ZIndex = -1
-mainShadow.Parent = mainFrame
-
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -20, 0, 40)
-title.Position = UDim2.new(0, 10, 0, 5)
-title.BackgroundTransparency = 1
-title.Text = "⚡ Auto Key Presser v13"
-title.TextColor3 = Color3.fromRGB(255,255,255)
-title.Font = Enum.Font.GothamBold
-title.TextSize = 20
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = mainFrame
+-- Container
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 400, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -200, 0.1, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
 
 -- Tab Bar
-local tabBar = Instance.new("Frame")
-tabBar.Size = UDim2.new(1, -20, 0, 35)
-tabBar.Position = UDim2.new(0, 10, 0, 50)
-tabBar.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-tabBar.BorderSizePixel = 0
-tabBar.Parent = mainFrame
+local TabBar = Instance.new("Frame")
+TabBar.Size = UDim2.new(1, 0, 0, 40)
+TabBar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+TabBar.BorderSizePixel = 0
+TabBar.Parent = MainFrame
 
-local tabCorner = Instance.new("UICorner", tabBar)
-tabCorner.CornerRadius = UDim.new(0, 10)
-
-local tabList = Instance.new("UIListLayout")
-tabList.FillDirection = Enum.FillDirection.Horizontal
-tabList.Padding = UDim.new(0, 10)
-tabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-tabList.VerticalAlignment = Enum.VerticalAlignment.Center
-tabList.Parent = tabBar
+-- Content Holder
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Size = UDim2.new(1, 0, 1, -40)
+ContentFrame.Position = UDim2.new(0, 0, 0, 40)
+ContentFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+ContentFrame.BorderSizePixel = 0
+ContentFrame.Parent = MainFrame
 
 -- Tab Buttons
-local function createTab(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.5, -15, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    btn.Text = name
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.fromRGB(220, 220, 230)
-    btn.AutoButtonColor = false
+local tabs = {
+    {Name = "Farm Fruit", Icon = "🍎"},
+    {Name = "Farm Haki", Icon = "⚡"}
+}
 
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 8)
+local buttons = {}
+local currentTab = nil
 
-    return btn
+local function switchTab(tabName)
+    for name,btn in pairs(buttons) do
+        if name == tabName then
+            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+    end
+    currentTab = tabName
 end
 
-local fruitTab = createTab("Farm Fruit")
-fruitTab.Parent = tabBar
-local hakiTab = createTab("Farm Haki")
-hakiTab.Parent = tabBar
-
--- Content Frames
-local fruitFrame = Instance.new("Frame")
-fruitFrame.Size = UDim2.new(1, -20, 1, -100)
-fruitFrame.Position = UDim2.new(0, 10, 0, 95)
-fruitFrame.BackgroundTransparency = 1
-fruitFrame.Parent = mainFrame
-
-local hakiFrame = Instance.new("Frame")
-hakiFrame.Size = UDim2.new(1, -20, 1, -100)
-hakiFrame.Position = UDim2.new(0, 10, 0, 95)
-hakiFrame.BackgroundTransparency = 1
-hakiFrame.Visible = false
-hakiFrame.Parent = mainFrame
-
--- Switch Tabs
-fruitTab.MouseButton1Click:Connect(function()
-    fruitFrame.Visible = true
-    hakiFrame.Visible = false
-    fruitTab.BackgroundColor3 = Color3.fromRGB(90, 90, 120)
-    hakiTab.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-end)
-
-hakiTab.MouseButton1Click:Connect(function()
-    fruitFrame.Visible = false
-    hakiFrame.Visible = true
-    hakiTab.BackgroundColor3 = Color3.fromRGB(90, 90, 120)
-    fruitTab.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-end)
-
--- Toggle States
-local toggles = {Z=false, X=false, C=false, V=false, R=false}
-
--- Toggle Button Factory
-local function createToggle(parent, key, order)
+for i,tab in ipairs(tabs) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 45)
-    btn.Position = UDim2.new(0, 0, 0, (order-1)*50)
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
-    btn.Text = key .. ": OFF"
+    btn.Size = UDim2.new(0.5, 0, 1, 0)
+    btn.Position = UDim2.new((i-1)*0.5, 0, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BorderSizePixel = 0
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 18
+    btn.Text = tab.Icon.." "..tab.Name
+    btn.TextSize = 16
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    btn.AutoButtonColor = false
-    btn.Parent = parent
-
-    local corner = Instance.new("UICorner", btn)
-    corner.CornerRadius = UDim.new(0, 8)
+    btn.Parent = TabBar
+    buttons[tab.Name] = btn
 
     btn.MouseButton1Click:Connect(function()
-        toggles[key] = not toggles[key]
-        btn.Text = key .. ": " .. (toggles[key] and "ON" or "OFF")
-        btn.BackgroundColor3 = toggles[key] and Color3.fromRGB(80, 120, 180) or Color3.fromRGB(50, 50, 65)
-    end)
-
-    return btn
-end
-
--- Farm Fruit Toggles (Z,X,C,V)
-for i, key in ipairs({"Z","X","C","V"}) do
-    createToggle(fruitFrame, key, i)
-end
-
--- Farm Haki Toggle (R)
-createToggle(hakiFrame, "R", 1)
-
--- Auto Press (Z,X,C,V)
-local function autoPress(key)
-    while toggles[key] do
-        if not GuiService.MenuIsOpen then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-            task.wait(0.1)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-        end
-        task.wait(0.5)
-    end
-end
-
-for _, key in ipairs({"Z","X","C","V"}) do
-    task.spawn(function()
-        while true do
-            if toggles[key] then
-                autoPress(key)
-            end
-            task.wait(0.1)
-        end
+        switchTab(tab.Name)
     end)
 end
 
--- Auto Hold R (8s)
+switchTab("Farm Fruit") -- mặc định mở Farm Fruit
+
+-- Farming logic
+local farming = true
+
 task.spawn(function()
-    while true do
-        if toggles["R"] and not GuiService.MenuIsOpen then
+    while task.wait(0.1) do
+        if not farming then continue end
+        if GuiService.MenuIsOpen then continue end
+
+        if currentTab == "Farm Fruit" then
+            for _, key in ipairs({"Z", "X", "C", "V"}) do
+                VirtualInputManager:SendKeyEvent(true, key, false, game)
+                task.wait(0.05)
+                VirtualInputManager:SendKeyEvent(false, key, false, game)
+            end
+        elseif currentTab == "Farm Haki" then
+            -- giữ R trong 8 giây
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
             task.wait(8)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
-            task.wait(0.5)
-        else
-            task.wait(0.1)
-        end
-    end
-end)
-
--- Toggle GUI bằng RightControl
-local lastToggle = 0
-RunService.Heartbeat:Connect(function()
-    if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-        if tick() - lastToggle > 0.3 then
-            mainFrame.Visible = not mainFrame.Visible
-            lastToggle = tick()
+            task.wait(1) -- nghỉ 1s trước vòng tiếp theo
         end
     end
 end)
