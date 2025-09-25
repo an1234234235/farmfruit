@@ -1,19 +1,16 @@
--- ✅ Safe Auto Fruit Script by NTBA
-
--- ⏳ Đợi game load
+-- Safe Auto Fruit Script by NTBA (Test bản)
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local vim_ = game:GetService("VirtualInputManager") -- Dùng biến tránh bị phát hiện
+local vim_ = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 local character = player:WaitForChild("Character")
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ⚙️ Trạng thái các toggle
 local settings = {
     autofruit = false,
     z = false,
@@ -23,9 +20,8 @@ local settings = {
     haki = false
 }
 
--- 🧱 GUI Setup
 local gui = Instance.new("ScreenGui")
-gui.Name = "CoreUI" -- Đặt tên không gây nghi ngờ
+gui.Name = "CoreUI"
 gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
@@ -41,7 +37,6 @@ uilist.Padding = UDim.new(0, 5)
 uilist.FillDirection = Enum.FillDirection.Vertical
 uilist.SortOrder = Enum.SortOrder.LayoutOrder
 
--- 🏷 Tác giả label
 local authorLabel = Instance.new("TextLabel", frame)
 authorLabel.Size = UDim2.new(1, -10, 0, 25)
 authorLabel.Position = UDim2.new(0, 5, 0, 0)
@@ -51,7 +46,6 @@ authorLabel.Font = Enum.Font.SourceSansBold
 authorLabel.TextSize = 18
 authorLabel.Text = "Tác giả: NTBA"
 
--- 🔽 Nút thu gọn
 local toggleButton = Instance.new("TextButton", frame)
 toggleButton.Size = UDim2.new(1, -10, 0, 30)
 toggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -63,7 +57,6 @@ toggleButton.Text = "Thu gọn 🔽"
 local isMinimized = false
 local toggleElements = {}
 
--- 🔘 Tạo nút Toggle
 local function createToggle(name)
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, -10, 0, 40)
@@ -83,7 +76,6 @@ local function createToggle(name)
     end)
 end
 
--- 🧩 Tạo các nút
 createToggle("AutoFruit")
 createToggle("Z")
 createToggle("X")
@@ -91,7 +83,6 @@ createToggle("C")
 createToggle("V")
 createToggle("Haki")
 
--- 📦 Thu gọn bảng
 toggleButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     toggleButton.Text = isMinimized and "Mở rộng ▶" or "Thu gọn 🔽"
@@ -100,7 +91,6 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- ⌨️ Bật/Tắt GUI bằng phím Ctrl phải
 gui.Enabled = true
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -109,10 +99,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- 🔁 Loop Auto Key Press (chống spam, chống band)
 task.spawn(function()
     while true do
-        task.wait(1.2 + math.random(0, 3)/10) -- delay từ 1.2 đến 1.5s (random hoá)
+        task.wait(1.2 + math.random(0, 3)/10)
 
         if settings.autofruit then
             local function pressKey(key)
