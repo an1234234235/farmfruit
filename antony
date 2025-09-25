@@ -7,13 +7,14 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
--- GUI chính
+-- Tạo GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoKeyPresserGUI"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = game:GetService("CoreGui")
 
+-- Frame chính
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 220, 0, 310)
 frame.Position = UDim2.new(0, 50, 0, 50)
@@ -35,16 +36,18 @@ stroke.Color = Color3.fromRGB(200, 200, 200)
 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 stroke.Parent = frame
 
+-- Tiêu đề
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "Auto Key Presser"
+title.Text = "Auto Key Presser v7"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 22
 title.Parent = frame
 
+-- Tác giả
 local author = Instance.new("TextLabel")
 author.Size = UDim2.new(1, 0, 0, 20)
 author.Position = UDim2.new(0, 0, 1, -25)
@@ -59,7 +62,7 @@ author.Parent = frame
 local keys = {"Z", "X", "C", "V", "R"}
 local toggles = {}
 
--- Hàm auto nhấn phím (Z,X,C,V)
+-- Hàm auto nhấn cho Z,X,C,V
 local function autoPress(key)
     while toggles[key] do
         VirtualInputManager:SendKeyEvent(true, key, false, game)
@@ -69,7 +72,7 @@ local function autoPress(key)
     end
 end
 
--- Tạo nút toggle
+-- Nút toggle cho từng phím
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
@@ -94,48 +97,45 @@ for i, key in ipairs(keys) do
     end)
 end
 
--- Auto giữ/thả R theo thanh Haki
+-- Auto giữ R theo thanh Haki
+local waitDelay = 20 -- nghỉ 20 giây
 local isRHeld = false
-local isCoolingDown = false
-local waitDelay = 4 -- nghỉ 4 giây sau khi thả
 
-RunService.Heartbeat:Connect(function()
-    if toggles["R"] and not isCoolingDown then
-        local success, err = pcall(function()
-            local hakiBar = player.PlayerGui.HealthBar.Frame.Haki
-            local percent = hakiBar.Size.X.Scale
+task.spawn(function()
+    while true do
+        if toggles["R"] then
+            local success, err = pcall(function()
+                local hakiBar = player.PlayerGui.HealthBar.Frame.Haki
+                local percent = hakiBar.Size.X.Scale
 
-            -- Nếu đầy gần 100% và chưa giữ thì nhấn giữ R
-            if percent >= 0.99 and not isRHeld then
-                VirtualInputManager:SendKeyEvent(true, "R", false, game)
-                isRHeld = true
-                print("[AUTO R] Giữ R - Haki:", percent)
+                if percent >= 0.99 and not isRHeld then
+                    VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                    isRHeld = true
+                    print("[AUTO R] Giữ R - Haki:", percent)
+                end
 
-            -- Nếu gần cạn và đang giữ thì thả R
-            elseif percent <= 0.05 and isRHeld then
+                if percent <= 0.05 and isRHeld then
+                    VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                    isRHeld = false
+                    print("[AUTO R] Thả R - nghỉ", waitDelay, "giây")
+
+                    task.wait(waitDelay)
+                end
+            end)
+
+            if not success then
+                warn("[AUTO R] Không tìm thấy thanh Haki!")
+            end
+        else
+            if isRHeld then
                 VirtualInputManager:SendKeyEvent(false, "R", false, game)
                 isRHeld = false
-                print("[AUTO R] Thả R - Haki:", percent)
-
-                -- Bắt đầu cooldown 4 giây (không chặn Heartbeat)
-                isCoolingDown = true
-                task.spawn(function()
-                    task.wait(waitDelay)
-                    isCoolingDown = false
-                end)
+                print("[AUTO R] Đã thả R do toggle tắt.")
             end
-        end)
+            task.wait(1)
+        end
 
-        if not success then
-            warn("[AUTO R] Không tìm thấy thanh Haki! Kiểm tra đường dẫn.")
-        end
-    else
-        -- Nếu toggle tắt thì đảm bảo thả R
-        if isRHeld then
-            VirtualInputManager:SendKeyEvent(false, "R", false, game)
-            isRHeld = false
-            print("[AUTO R] Đã thả R do toggle tắt.")
-        end
+        task.wait(0.2)
     end
 end)
 
