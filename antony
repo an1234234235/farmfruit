@@ -1,13 +1,3 @@
-GUI có nút bật tắt cho các phím Z, X, C, V, R
-
-Với phím R: giữ phím khi thanh tím >= 90%, thả phím khi thanh tím <= 10%, rồi lặp lại
-
-GUI có viền mờ, bo góc, kéo được, bật tắt bằng phím RightControl
-
-Có ghi tác giả NTBA
-
-Bạn chỉ việc copy & paste vào LocalScript trong Roblox Studio nhé:
-
 -- Auto Key Presser GUI v5 - by NTBA
 
 local Players = game:GetService("Players")
