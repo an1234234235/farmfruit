@@ -1,3 +1,13 @@
+GUI có nút bật tắt cho các phím Z, X, C, V, R
+
+Với phím R: giữ phím khi thanh tím >= 90%, thả phím khi thanh tím <= 10%, rồi lặp lại
+
+GUI có viền mờ, bo góc, kéo được, bật tắt bằng phím RightControl
+
+Có ghi tác giả NTBA
+
+Bạn chỉ việc copy & paste vào LocalScript trong Roblox Studio nhé:
+
 -- Auto Key Presser GUI v5 - by NTBA
 
 local Players = game:GetService("Players")
@@ -74,6 +84,24 @@ local function autoPress(key)
     end
 end
 
+-- Hàm tìm thanh tím dựa vào màu (trong PlayerGui)
+local function findPurpleBar(guiObject)
+    if guiObject:IsA("Frame") or guiObject:IsA("ImageLabel") then
+        local c = guiObject.BackgroundColor3 or guiObject.ImageColor3
+        if c then
+            local r, g, b = c.R, c.G, c.B
+            if r < 0.3 and g < 0.05 and b > 0.5 then
+                return guiObject
+            end
+        end
+    end
+    for _, child in pairs(guiObject:GetChildren()) do
+        local found = findPurpleBar(child)
+        if found then return found end
+    end
+    return nil
+end
+
 -- Tạo nút bật tắt cho từng phím
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
@@ -102,27 +130,47 @@ end
 -- Biến lưu trạng thái giữ phím R
 local isRHeld = false
 
--- Xử lý giữ thả phím R 5 giây giữ, 5 giây thả, lặp lại
-task.spawn(function()
-    while true do
-        if toggles["R"] then
-            if not isRHeld then
+-- Lấy thanh tím (lấy lại khi nhân vật respawn)
+local purpleBar = nil
+local function updatePurpleBar()
+    purpleBar = findPurpleBar(player:WaitForChild("PlayerGui"))
+    if not purpleBar then
+        warn("Không tìm thấy thanh màu tím!")
+    end
+end
+updatePurpleBar()
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    updatePurpleBar()
+end)
+
+-- Biến lưu trạng thái giữ phím R và thời gian
+local isRHeld = false
+local lastToggleTime = 0
+local holdDuration = 5 -- giây giữ phím R
+local releaseDuration = 5 -- giây thả phím R
+
+-- Loop kiểm tra giữ thả phím R theo thời gian
+RunService.Heartbeat:Connect(function()
+    if toggles["R"] then
+        local currentTime = tick()
+        if not isRHeld then
+            if currentTime - lastToggleTime >= releaseDuration then
                 VirtualInputManager:SendKeyEvent(true, "R", false, game)
                 isRHeld = true
+                lastToggleTime = currentTime
             end
-            task.wait(5) -- giữ phím R trong 5 giây
-
-            if isRHeld then
-                VirtualInputManager:SendKeyEvent(false, "R", false, game)
-                isRHeld = false
-            end
-            task.wait(5) -- thả phím R trong 5 giây
         else
-            if isRHeld then
+            if currentTime - lastToggleTime >= holdDuration then
                 VirtualInputManager:SendKeyEvent(false, "R", false, game)
                 isRHeld = false
+                lastToggleTime = currentTime
             end
-            task.wait(0.1)
+        end
+    else
+        if isRHeld then
+            VirtualInputManager:SendKeyEvent(false, "R", false, game)
+            isRHeld = false
         end
     end
 end)
