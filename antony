@@ -1,49 +1,40 @@
---// UI Ngang Farm Script (White Theme)
--- Copy lên GitHub chạy ok
-
--- Services
+--// Services
+local TweenService = game:GetService("TweenService")
+local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local GuiService = game:GetService("GuiService")
+local RunService = game:GetService("RunService")
 
--- Main GUI
+--// Main GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FarmUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Container
+--// Container
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 260)
-MainFrame.Position = UDim2.new(0.5, -240, 0.1, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-MainFrame.BorderColor3 = Color3.fromRGB(200, 200, 200)
-MainFrame.BorderSizePixel = 2
+MainFrame.Size = UDim2.new(0, 450, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -225, 0.1, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
--- Rounded corner
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 12)
-UICorner.Parent = MainFrame
-
--- Tab Bar
+--// Tab Bar
 local TabBar = Instance.new("Frame")
 TabBar.Size = UDim2.new(1, 0, 0, 40)
-TabBar.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-TabBar.BorderColor3 = Color3.fromRGB(200, 200, 200)
-TabBar.BorderSizePixel = 1
+TabBar.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
+TabBar.BorderSizePixel = 0
 TabBar.Parent = MainFrame
 
--- Content Holder
+--// Content Holder
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Size = UDim2.new(1, 0, 1, -40)
 ContentFrame.Position = UDim2.new(0, 0, 0, 40)
-ContentFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-ContentFrame.BorderColor3 = Color3.fromRGB(200, 200, 200)
-ContentFrame.BorderSizePixel = 1
+ContentFrame.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+ContentFrame.BorderSizePixel = 0
 ContentFrame.Parent = MainFrame
 
--- Tab Buttons
+--// Tab Buttons
 local tabs = {
     {Name = "Farm Fruit", Icon = "🍎"},
     {Name = "Farm Haki", Icon = "⚡"}
@@ -54,138 +45,154 @@ local currentTab = nil
 
 local function switchTab(tabName)
     for name, btn in pairs(buttons) do
-        if name == tabName then
-            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-        end
-    end
-    for _, child in pairs(ContentFrame:GetChildren()) do
-        child.Visible = (child.Name == tabName)
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local goal = {BackgroundColor3 = (name == tabName) and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 60)}
+        local tween = TweenService:Create(btn, tweenInfo, goal)
+        tween:Play()
+
+        btn.TextColor3 = (name == tabName) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(200, 200, 200)
     end
     currentTab = tabName
+
+    -- Hide all content
+    for _, child in ipairs(ContentFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local goal = {Position = UDim2.new(0, 0, 1, 0)}
+            local tween = TweenService:Create(child, tweenInfo, goal)
+            tween:Play()
+            tween.Completed:Connect(function()
+                child.Visible = false
+            end)
+        end
+    end
+
+    -- Show current tab content
+    if ContentFrame:FindFirstChild(tabName.."Content") then
+        local content = ContentFrame[tabName.."Content"]
+        content.Visible = true
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local goal = {Position = UDim2.new(0, 0, 0, 0)}
+        local tween = TweenService:Create(content, tweenInfo, goal)
+        tween:Play()
+    end
 end
 
--- Tạo nút tab
 for i, tab in ipairs(tabs) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 120, 1, 0)
-    btn.Position = UDim2.new(0, (i - 1) * 120, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = tab.Icon .. " " .. tab.Name
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 18
-    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    btn.Size = UDim2.new(0.5, 0, 1, 0)
+    btn.Position = UDim2.new((i - 1) * 0.5, 0, 0, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = tab.Icon.." "..tab.Name
+    btn.TextSize = 16
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
     btn.Parent = TabBar
-
     buttons[tab.Name] = btn
 
     btn.MouseButton1Click:Connect(function()
         switchTab(tab.Name)
     end)
+
+    -- Hover effect
+    btn.MouseEnter:Connect(function()
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local goal = {BackgroundColor3 = Color3.fromRGB(0, 170, 255)}
+        local tween = TweenService:Create(btn, tweenInfo, goal)
+        tween:Play()
+    end)
+
+    btn.MouseLeave:Connect(function()
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local goal = {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}
+        local tween = TweenService:Create(btn, tweenInfo, goal)
+        tween:Play()
+    end)
 end
 
--- Farm Fruit tab
-local FruitFrame = Instance.new("Frame")
-FruitFrame.Name = "Farm Fruit"
-FruitFrame.Size = UDim2.new(1, 0, 1, 0)
-FruitFrame.BackgroundTransparency = 1
-FruitFrame.Visible = false
-FruitFrame.Parent = ContentFrame
+switchTab("Farm Fruit") -- Default to Farm Fruit
 
--- Farm Haki tab
-local HakiFrame = Instance.new("Frame")
-HakiFrame.Name = "Farm Haki"
-HakiFrame.Size = UDim2.new(1, 0, 1, 0)
-HakiFrame.BackgroundTransparency = 1
-HakiFrame.Visible = false
-HakiFrame.Parent = ContentFrame
+--// Content Tab Frames
+local fruitFrame = Instance.new("Frame")
+fruitFrame.Size = UDim2.new(1, 0, 1, 0)
+fruitFrame.Position = UDim2.new(0, 0, 0, 0)
+fruitFrame.BackgroundTransparency = 1
+fruitFrame.Visible = true
+fruitFrame.Name = "Farm FruitContent"
+fruitFrame.Parent = ContentFrame
 
--- 🔘 Thêm toggle nút trong Farm Fruit (Z, X, C, V)
-local keys = {"Z", "X", "C", "V"}
-local toggles = {}
+local hakiFrame = Instance.new("Frame")
+hakiFrame.Size = UDim2.new(1, 0, 1, 0)
+hakiFrame.Position = UDim2.new(0, 0, 0, 0)
+hakiFrame.BackgroundTransparency = 1
+hakiFrame.Visible = false
+hakiFrame.Name = "Farm HakiContent"
+hakiFrame.Parent = ContentFrame
 
-local function createToggle(parent, key, posY)
+--// Buttons for each key
+local fruitKeys = {"Z", "X", "C", "V"}
+local fruitToggles = {}
+
+for i, key in ipairs(fruitKeys) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 180, 0, 40)
-    btn.Position = UDim2.new(0, 20, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = key .. " : OFF"
-    btn.Font = Enum.Font.SourceSans
-    btn.TextSize = 20
-    btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-    btn.Parent = parent
-
-    toggles[key] = false
-
+    btn.Size = UDim2.new(0, 80, 0, 40)
+    btn.Position = UDim2.new(0, 20 + (i - 1) * 90, 0, 50)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 18
+    btn.Text = key.." OFF"
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Parent = fruitFrame
+    local state = false
     btn.MouseButton1Click:Connect(function()
-        toggles[key] = not toggles[key]
-        if toggles[key] then
-            btn.Text = key .. " : ON"
-            btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        else
-            btn.Text = key .. " : OFF"
-            btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            btn.TextColor3 = Color3.fromRGB(0, 0, 0)
-        end
+        state = not state
+        btn.Text = key.." "..(state and "ON" or "OFF")
+        btn.BackgroundColor3 = state and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 60)
+        fruitToggles[key] = state
     end)
+    fruitToggles[key] = state
 end
 
-for i, key in ipairs(keys) do
-    createToggle(FruitFrame, key, 20 + (i - 1) * 50)
-end
-
--- 🔘 Thêm toggle nút R trong Farm Haki
-local Rbtn = Instance.new("TextButton")
-Rbtn.Size = UDim2.new(0, 180, 0, 40)
-Rbtn.Position = UDim2.new(0, 20, 0, 20)
-Rbtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Rbtn.Text = "R : OFF"
-Rbtn.Font = Enum.Font.SourceSans
-Rbtn.TextSize = 20
-Rbtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-Rbtn.Parent = HakiFrame
-
-toggles["R"] = false
-Rbtn.MouseButton1Click:Connect(function()
-    toggles["R"] = not toggles["R"]
-    if toggles["R"] then
-        Rbtn.Text = "R : ON"
-        Rbtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-        Rbtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    else
-        Rbtn.Text = "R : OFF"
-        Rbtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Rbtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-    end
+--// Haki Button
+local hakiBtn = Instance.new("TextButton")
+hakiBtn.Size = UDim2.new(0, 100, 0, 40)
+hakiBtn.Position = UDim2.new(0, 20, 0, 50)
+hakiBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+hakiBtn.BorderSizePixel = 0
+hakiBtn.Font = Enum.Font.GothamBold
+hakiBtn.TextSize = 18
+hakiBtn.Text = "R OFF"
+hakiBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+hakiBtn.Parent = hakiFrame
+local hakiToggle = false
+hakiBtn.MouseButton1Click:Connect(function()
+    hakiToggle = not hakiToggle
+    hakiBtn.Text = "R "..(hakiToggle and "ON" or "OFF")
+    hakiBtn.BackgroundColor3 = hakiToggle and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 60)
 end)
 
--- 🚀 Hàm auto bấm
-local function autoPress(key, holdTime)
-    while task.wait() do
-        if toggles[key] and not GuiService.MenuIsOpen then
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
-            task.wait(holdTime or 0.1)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
-            task.wait(0.3)
-        end
-    end
-end
-
--- Fruit keys: click nhanh
-for _, key in ipairs(keys) do
-    task.spawn(function()
-        autoPress(key, 0.1)
-    end)
-end
-
--- R key: giữ 8 giây
+--// Farming logic
 task.spawn(function()
-    autoPress("R", 8)
-end)
+    while task.wait(0.1) do
+        if GuiService.MenuIsOpen then continue end
 
--- Mặc định mở Farm Fruit
-switchTab("Farm Fruit")
+        if currentTab == "Farm Fruit" then
+            for key, state in pairs(fruitToggles) do
+                if state then
+                    VirtualInputManager:SendKeyEvent(true, key, false, game)
+                    task.wait(0.05)
+                    VirtualInputManager:SendKeyEvent(false, key, false, game)
+                end
+            end
+        elseif currentTab == "Farm Haki" then
+            if hakiToggle then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                task.wait(8)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+                task.wait(1)
+            end
+        end
+    end
+end)
