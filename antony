@@ -7,7 +7,6 @@ if old then old:Destroy() end
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 -- Main GUI
@@ -124,10 +123,10 @@ local function switchTab(tabName)
         if child:IsA("Frame") then
             if child.Name == tabName.."Content" then
                 child.Visible = true
-                TweenService:Create(child,TweenInfo.new(0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
+                TweenService:Create(child, TweenInfo.new(0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
                     {Position=UDim2.new(0,0,0,0)}):Play()
             else
-                TweenService:Create(child,TweenInfo.new(0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
+                TweenService:Create(child, TweenInfo.new(0.3,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),
                     {Position=UDim2.new(0,0,1,0)}):Play()
                 delay(0.3,function() child.Visible = false end)
             end
@@ -151,7 +150,6 @@ for i, tab in ipairs(tabs) do
 
     btn.MouseButton1Click:Connect(function() switchTab(tab.Name) end)
 
-    -- Hover effect
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn,TweenInfo.new(0.2,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundColor3=Color3.fromRGB(0,170,255)}):Play()
     end)
