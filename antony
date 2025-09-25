@@ -1,11 +1,9 @@
 -- AutoFruitGUI.lua
 
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
--- ⚙️ State Toggle
 local settings = {
     autofruit = false,
     z = false,
@@ -15,13 +13,13 @@ local settings = {
     haki = false
 }
 
--- 🧱 Create GUI
+-- GUI setup
 local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 gui.Name = "AutoFruitControl"
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 200, 0, 260)
+frame.Size = UDim2.new(0, 200, 0, 340)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
@@ -31,16 +29,39 @@ uilist.Padding = UDim.new(0, 5)
 uilist.FillDirection = Enum.FillDirection.Vertical
 uilist.SortOrder = Enum.SortOrder.LayoutOrder
 
--- 🔘 Toggle Button Creator
+-- 🏷 Tác giả label
+local authorLabel = Instance.new("TextLabel", frame)
+authorLabel.Size = UDim2.new(1, -10, 0, 25)
+authorLabel.Position = UDim2.new(0, 5, 0, 0)
+authorLabel.BackgroundTransparency = 1
+authorLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+authorLabel.Font = Enum.Font.SourceSansBold
+authorLabel.TextSize = 18
+authorLabel.Text = "Tác giả: NTBA"
+
+-- 🔽 Toggle Show/Hide Button
+local toggleButton = Instance.new("TextButton", frame)
+toggleButton.Size = UDim2.new(1, -10, 0, 30)
+toggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 16
+toggleButton.Text = "Thu gọn 🔽"
+
+local isMinimized = false
+local toggleElements = {}
+
+-- 🔘 Toggle Creator
 local function createToggle(name)
     local btn = Instance.new("TextButton", frame)
     btn.Size = UDim2.new(1, -10, 0, 40)
-    btn.Position = UDim2.new(0, 5, 0, 0)
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.SourceSansBold
     btn.TextSize = 18
     btn.Text = name .. ": OFF"
+
+    table.insert(toggleElements, btn)
 
     btn.MouseButton1Click:Connect(function()
         local key = name:lower()
@@ -50,7 +71,7 @@ local function createToggle(name)
     end)
 end
 
--- 🛠 Add Toggles
+-- Các nút toggle
 createToggle("AutoFruit")
 createToggle("Z")
 createToggle("X")
@@ -58,34 +79,60 @@ createToggle("C")
 createToggle("V")
 createToggle("Haki")
 
--- 🚀 Main Input Handler
-UIS.InputBegan:Connect(function(input, gpe)
-    if gpe then return end
-    if not settings.autofruit then return end
-
-    local key = input.KeyCode
-    if key == Enum.KeyCode.Z and settings.z then
-        print("Thực hiện kỹ năng Z")
-        -- Gọi skill Z ở đây
-    elseif key == Enum.KeyCode.X and settings.x then
-        print("Thực hiện kỹ năng X")
-    elseif key == Enum.KeyCode.C and settings.c then
-        print("Thực hiện kỹ năng C")
-    elseif key == Enum.KeyCode.V and settings.v then
-        print("Thực hiện kỹ năng V")
+-- Ẩn/Hiện nội dung bảng
+toggleButton.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    toggleButton.Text = isMinimized and "Mở rộng ▶" or "Thu gọn 🔽"
+    for _, element in pairs(toggleElements) do
+        element.Visible = not isMinimized
     end
 end)
 
--- ⏱ Auto Haki Loop
+-- Auto key press loop
 task.spawn(function()
     while true do
         task.wait(1)
-        if settings.autofruit and settings.haki then
-            -- Ấn phím "R"
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
-            task.wait(0.1)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
-            print("Auto Haki - Ấn R")
+
+        if settings.autofruit then
+            -- Auto Haki (R)
+            if settings.haki then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+                print("Auto R (Haki)")
+            end
+
+            -- Auto Z
+            if settings.z then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Z, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Z, false, game)
+                print("Auto Z")
+            end
+
+            -- Auto X
+            if settings.x then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.X, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+                print("Auto X")
+            end
+
+            -- Auto C
+            if settings.c then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.C, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.C, false, game)
+                print("Auto C")
+            end
+
+            -- Auto V
+            if settings.v then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.V, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.V, false, game)
+                print("Auto V")
+            end
         end
     end
 end)
