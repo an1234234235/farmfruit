@@ -93,8 +93,7 @@ end
 
 -- ⚡ Auto R dựa vào thanh Haki
 local holdingR = false
-local cooldown = false
-local cooldownTime = 20 -- nghỉ 20s để hồi đầy
+local FULL_THRESHOLD = 0.95 -- ngưỡng hồi lại
 
 RunService.Heartbeat:Connect(function()
     if toggles["R"] then
@@ -105,18 +104,17 @@ RunService.Heartbeat:Connect(function()
                 local bar = frame.Haki.Frame
                 if bar:IsA("Frame") then
                     local scale = bar.Size.X.Scale
-                    if scale >= 1 and not holdingR and not cooldown then
-                        -- Bắt đầu giữ R
+
+                    -- Khi đầy >= 95% và chưa giữ thì ấn R
+                    if scale >= FULL_THRESHOLD and not holdingR then
                         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
                         holdingR = true
-                    elseif scale <= 0 and holdingR then
-                        -- Nhả R khi hết
+                    end
+
+                    -- Khi cạn (0) thì nhả R
+                    if scale <= 0 and holdingR then
                         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
                         holdingR = false
-                        cooldown = true
-                        task.delay(cooldownTime, function()
-                            cooldown = false
-                        end)
                     end
                 end
             end
