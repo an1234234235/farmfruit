@@ -1,3 +1,5 @@
+--// AUTO KEY PRESS GUI by NTBA
+
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -6,18 +8,24 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- Tạo GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AutoPressGui"
+screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
+-- Tạo Frame (bảng)
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 220, 0, 310)
 frame.Position = UDim2.new(0, 50, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Visible = true
+frame.Active = true             -- 👈 Bắt sự kiện chuột
+frame.Draggable = true          -- 👈 Cho phép kéo frame
 frame.Parent = screenGui
 
+-- Tiêu đề
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundTransparency = 1
@@ -27,6 +35,7 @@ title.Font = Enum.Font.SourceSansBold
 title.TextSize = 22
 title.Parent = frame
 
+-- Tác giả
 local authorLabel = Instance.new("TextLabel")
 authorLabel.Size = UDim2.new(1, 0, 0, 20)
 authorLabel.Position = UDim2.new(0, 0, 1, -25)
@@ -37,9 +46,11 @@ authorLabel.Font = Enum.Font.SourceSansItalic
 authorLabel.TextSize = 16
 authorLabel.Parent = frame
 
+-- Danh sách phím và trạng thái
 local keys = {"Z", "X", "C", "V", "R"}
 local toggles = {}
 
+-- Hàm auto nhấn phím
 local function autoPressKey(key)
     while toggles[key] do
         VirtualInputManager:SendKeyEvent(true, key, false, game)
@@ -49,6 +60,7 @@ local function autoPressKey(key)
     end
 end
 
+-- Tạo nút cho từng phím
 for i, key in ipairs(keys) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 40)
@@ -74,9 +86,9 @@ for i, key in ipairs(keys) do
     end)
 end
 
--- Kiểm tra nhấn RightControl qua vòng lặp
+-- Nhấn RightControl để ẩn/hiện GUI
 local lastToggleTime = 0
-local debounceTime = 0.3 -- tránh nhấn nhanh bật tắt liên tục
+local debounceTime = 0.3
 
 RunService.Heartbeat:Connect(function()
     if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
