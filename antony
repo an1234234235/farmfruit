@@ -1,4 +1,4 @@
---// AUTO KEY PRESS GUI by NTBA
+-- Auto Key Presser GUI v3 - by NTBA
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -6,28 +6,42 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
 -- Tạo GUI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AutoPressGui"
+screenGui.Name = "AutoKeyPresserGUI"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = game:GetService("CoreGui") -- Để không mất khi reset
 
--- Tạo Frame (bảng)
+-- Tạo bảng chính (Frame)
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 220, 0, 310)
 frame.Position = UDim2.new(0, 50, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
 frame.Visible = true
-frame.Active = true             -- 👈 Bắt sự kiện chuột
-frame.Draggable = true          -- 👈 Cho phép kéo frame
 frame.Parent = screenGui
+
+-- Bo góc
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = frame
+
+-- Viền mờ
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 1.2
+stroke.Transparency = 0.6 -- Độ mờ (0 = rõ, 1 = vô hình)
+stroke.Color = Color3.fromRGB(200, 200, 200)
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+stroke.Parent = frame
 
 -- Tiêu đề
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundTransparency = 1
 title.Text = "Auto Key Presser"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -36,27 +50,27 @@ title.TextSize = 22
 title.Parent = frame
 
 -- Tác giả
-local authorLabel = Instance.new("TextLabel")
-authorLabel.Size = UDim2.new(1, 0, 0, 20)
-authorLabel.Position = UDim2.new(0, 0, 1, -25)
-authorLabel.BackgroundTransparency = 1
-authorLabel.Text = "Tác giả: NTBA"
-authorLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-authorLabel.Font = Enum.Font.SourceSansItalic
-authorLabel.TextSize = 16
-authorLabel.Parent = frame
+local author = Instance.new("TextLabel")
+author.Size = UDim2.new(1, 0, 0, 20)
+author.Position = UDim2.new(0, 0, 1, -25)
+author.BackgroundTransparency = 1
+author.Text = "Tác giả: NTBA"
+author.TextColor3 = Color3.fromRGB(150, 150, 150)
+author.Font = Enum.Font.SourceSansItalic
+author.TextSize = 16
+author.Parent = frame
 
--- Danh sách phím và trạng thái
+-- Danh sách phím
 local keys = {"Z", "X", "C", "V", "R"}
 local toggles = {}
 
 -- Hàm auto nhấn phím
-local function autoPressKey(key)
+local function autoPress(key)
     while toggles[key] do
         VirtualInputManager:SendKeyEvent(true, key, false, game)
-        wait(0.1)
+        task.wait(0.1)
         VirtualInputManager:SendKeyEvent(false, key, false, game)
-        wait(0.5)
+        task.wait(0.5)
     end
 end
 
@@ -77,25 +91,20 @@ for i, key in ipairs(keys) do
 
     btn.MouseButton1Click:Connect(function()
         toggles[key] = not toggles[key]
+        btn.Text = key .. ": " .. (toggles[key] and "ON" or "OFF")
         if toggles[key] then
-            btn.Text = key .. ": ON"
-            spawn(function() autoPressKey(key) end)
-        else
-            btn.Text = key .. ": OFF"
+            task.spawn(function() autoPress(key) end)
         end
     end)
 end
 
 -- Nhấn RightControl để ẩn/hiện GUI
-local lastToggleTime = 0
-local debounceTime = 0.3
-
+local lastToggle = 0
 RunService.Heartbeat:Connect(function()
     if UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-        local currentTime = tick()
-        if currentTime - lastToggleTime > debounceTime then
+        if tick() - lastToggle > 0.3 then
             frame.Visible = not frame.Visible
-            lastToggleTime = currentTime
+            lastToggle = tick()
         end
     end
 end)
