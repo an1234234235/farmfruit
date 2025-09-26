@@ -1,5 +1,5 @@
--- Fruit Hub (Dark + Neon) - NTBA v2.8 - FINAL FIX (Remote Call: Pickup)
--- Đã chuyển sang sử dụng Remote Event/Function "Pickup" bên trong trái cây.
+-- Fruit Hub (Dark + Neon) - NTBA v2.9 - FINAL REMOTE FIX (Pickup Remote Argument)
+-- Đã điều chỉnh tham số truyền vào Remote Call là Part chính ("Main" hoặc "Handle").
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,7 +18,7 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- ===== UI & CONTROLS (Giữ nguyên từ v2.7) =====
+-- ===== UI & CONTROLS (Giữ nguyên) =====
 local MAIN_W, MAIN_H = 740, 440
 local Sidebar_W = 160
 local ScreenGui = Instance.new("ScreenGui")
@@ -336,7 +336,7 @@ do -- UI Logic (Giữ nguyên)
     end)
 end
 
--- HÀM NHẶT TRÁI CÂY (SỬ DỤNG REMOTE FUNCTION "Pickup")
+-- HÀM NHẶT TRÁI CÂY (FIX: Remote Call với tham số Part chính)
 local function pickupFruit(tool)
     if not tool or not player.Character then return end
     
@@ -346,7 +346,7 @@ local function pickupFruit(tool)
     
     if not mainPart or not hrp then return end
 
-    -- 1. Tìm Remote Event/Function "Pickup"
+    -- 1. Tìm Remote Event/Function "Pickup" (Nằm trong Part chính)
     local pickupRemote = mainPart:FindFirstChild("Pickup") 
 
     if pickupRemote and (pickupRemote:IsA("RemoteEvent") or pickupRemote:IsA("RemoteFunction")) then
@@ -356,20 +356,29 @@ local function pickupFruit(tool)
         end)
         task.wait(0.05)
         
-        -- 3. GỌI LỆNH REMOTE (Hiệu quả nhất)
+        -- 3. GỌI LỆNH REMOTE VỚI THAM SỐ LÀ PART CHÍNH
         pcall(function()
-             -- Gửi đối tượng trái cây (tool/model) làm tham số
-             pickupRemote:FireServer(tool) 
+             -- Gửi Part bị click (Main hoặc Handle) làm tham số.
+             -- THAY ĐỔI TỪ: pickupRemote:FireServer(tool) -> pickupRemote:FireServer(mainPart)
+             pickupRemote:FireServer(mainPart) 
         end)
     else
-        -- Dự phòng: Sử dụng firetouchinterest nếu không tìm thấy Remote "Pickup"
-        for i=1, 5 do 
+        -- Dự phòng: fireclickdetector (vẫn có thể hữu ích)
+        local clickDetector = mainPart:FindFirstChildWhichIsA("ClickDetector")
+        if clickDetector then
             pcall(function()
-                firetouchinterest(hrp, mainPart, 0) 
-                task.wait(0.01)
-                firetouchinterest(hrp, mainPart, 1) 
+                 fireclickdetector(clickDetector, 0.1) 
             end)
-            task.wait(0.02)
+        else
+             -- Dự phòng cuối cùng: FireTouchInterest
+             for i=1, 5 do 
+                 pcall(function()
+                     firetouchinterest(hrp, mainPart, 0) 
+                     task.wait(0.01)
+                     firetouchinterest(hrp, mainPart, 1) 
+                 end)
+                 task.wait(0.02)
+             end
         end
     end
 end
@@ -439,4 +448,4 @@ foot.TextColor3 = Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Fruit Hub"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v2.8 - Remote Call FIX Initialized.")
+print("NTBA Fruit Hub v2.9 - FINAL Remote Call FIX Initialized.")
