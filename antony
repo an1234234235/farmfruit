@@ -1,204 +1,80 @@
---// Xoá GUI cũ nếu có
+--// Lib UI
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Window = OrionLib:MakeWindow({Name = "Fruit Hub FINAL", HidePremium = false, SaveConfig = true, ConfigFolder = "FruitHub"})
+
+-- Tabs
+local FarmTab = Window:MakeTab({Name = "Farm Fruit", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local HakiTab = Window:MakeTab({Name = "Farm Haki", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local AutoFruitTab = Window:MakeTab({Name = "Auto Fruit", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local SettingTab = Window:MakeTab({Name = "Settings", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+
+-- Player
 local player = game.Players.LocalPlayer
-local old = player:FindFirstChild("PlayerGui"):FindFirstChild("FarmUI")
-if old then old:Destroy() end
+local char = player.Character or player.CharacterAdded:Wait()
+local hum = char:WaitForChild("Humanoid")
 
---// Services
-local TweenService = game:GetService("TweenService")
-local GuiService = game:GetService("GuiService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local UserInputService = game:GetService("UserInputService")
-local TeleportService = game:GetService("TeleportService")
-
---// Main GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FarmUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0,450,0,260)
-MainFrame.Position = UDim2.new(0.5,-225,0.1,0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-MainFrame.BackgroundTransparency = 0.05
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0,12)
-corner.Parent = MainFrame
-
---// Tab Bar
-local TabBar = Instance.new("Frame")
-TabBar.Size = UDim2.new(1,0,0,40)
-TabBar.BackgroundColor3 = Color3.fromRGB(45,45,45)
-TabBar.BorderSizePixel = 0
-TabBar.Parent = MainFrame
-
-local tabCorner = Instance.new("UICorner")
-tabCorner.CornerRadius = UDim.new(0,10)
-tabCorner.Parent = TabBar
-
---// Content Holder
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1,0,1,-40)
-ContentFrame.Position = UDim2.new(0,0,0,40)
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.Parent = MainFrame
-
---// Tabs setup
-local tabs = {
-    {Name="Farm Fruit", Icon="🍎"},
-    {Name="Farm Haki", Icon="⚡"},
-    {Name="Auto Fruit", Icon="🥭"},
-    {Name="Settings", Icon="⚙️"},
+--// ================= FARM FRUIT =================
+local AutoSkills = {
+    Z = false,
+    X = false,
+    C = false,
+    V = false,
+    R = false -- thêm phím R nếu farm haki riêng
 }
-local buttons = {}
-local currentTab = nil
 
---// Frames cho từng tab
-local farmFruitFrame = Instance.new("Frame", ContentFrame)
-farmFruitFrame.Size = UDim2.new(1,0,1,0)
-farmFruitFrame.BackgroundTransparency = 1
-farmFruitFrame.Visible = false
-farmFruitFrame.Name = "Farm FruitContent"
-
-local hakiFrame = Instance.new("Frame", ContentFrame)
-hakiFrame.Size = UDim2.new(1,0,1,0)
-hakiFrame.BackgroundTransparency = 1
-hakiFrame.Visible = false
-hakiFrame.Name = "Farm HakiContent"
-
-local autoFruitFrame = Instance.new("Frame", ContentFrame)
-autoFruitFrame.Size = UDim2.new(1,0,1,0)
-autoFruitFrame.BackgroundTransparency = 1
-autoFruitFrame.Visible = false
-autoFruitFrame.Name = "Auto FruitContent"
-
-local settingFrame = Instance.new("Frame", ContentFrame)
-settingFrame.Size = UDim2.new(1,0,1,0)
-settingFrame.BackgroundTransparency = 1
-settingFrame.Visible = false
-settingFrame.Name = "SettingsContent"
-
---// Switch tab
-local function switchTab(tabName)
-    for name, btn in pairs(buttons) do
-        local colorGoal = (name==tabName) and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
-        TweenService:Create(btn,TweenInfo.new(0.3),{BackgroundColor3=colorGoal}):Play()
-        btn.TextColor3 = (name==tabName) and Color3.fromRGB(255,255,255) or Color3.fromRGB(200,200,200)
-    end
-    currentTab = tabName
-    for _, child in ipairs(ContentFrame:GetChildren()) do
-        child.Visible = (child.Name == tabName.."Content")
-    end
-end
-
---// Create tab buttons
-for i, tab in ipairs(tabs) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.25,0,1,0)
-    btn.Position = UDim2.new((i-1)*0.25,0,0,0)
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    btn.BorderSizePixel = 0
-    btn.Font = Enum.Font.GothamBold
-    btn.Text = tab.Icon.." "..tab.Name
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.fromRGB(200,200,200)
-    btn.Parent = TabBar
-    buttons[tab.Name] = btn
-    btn.MouseButton1Click:Connect(function() switchTab(tab.Name) end)
-end
-
-switchTab("Farm Fruit")
-
---// FARM FRUIT (Z/X/C/V)
-local fruitKeys = {"Z","X","C","V"}
-local fruitToggles = {}
-for i,key in ipairs(fruitKeys) do
-    local btn = Instance.new("TextButton", farmFruitFrame)
-    btn.Size = UDim2.new(0,80,0,35)
-    btn.Position = UDim2.new(0,20+(i-1)*100,0,40)
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    btn.Text = key.." OFF"
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 16
-    btn.TextColor3 = Color3.fromRGB(200,200,200)
-    local state = false
-    fruitToggles[key] = state
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        fruitToggles[key] = state
-        btn.Text = key.." "..(state and "ON" or "OFF")
-        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
-    end)
-end
-
---// FARM HAKI (R)
-local hakiBtn = Instance.new("TextButton", hakiFrame)
-hakiBtn.Size = UDim2.new(0,100,0,40)
-hakiBtn.Position = UDim2.new(0,20,0,40)
-hakiBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-hakiBtn.Text = "R OFF"
-hakiBtn.Font = Enum.Font.GothamBold
-hakiBtn.TextSize = 16
-hakiBtn.TextColor3 = Color3.fromRGB(200,200,200)
-local hakiToggle = false
-hakiBtn.MouseButton1Click:Connect(function()
-    hakiToggle = not hakiToggle
-    hakiBtn.Text = "R "..(hakiToggle and "ON" or "OFF")
-    hakiBtn.BackgroundColor3 = hakiToggle and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
-end)
-
---// AUTO FRUIT (scroll + Luck)
-local scroll = Instance.new("ScrollingFrame", autoFruitFrame)
-scroll.Size = UDim2.new(1,0,1,0)
-scroll.CanvasSize = UDim2.new(0,0,0,0)
-scroll.ScrollBarThickness = 6
-scroll.BackgroundTransparency = 1
-
-local list = Instance.new("UIListLayout", scroll)
-list.SortOrder = Enum.SortOrder.LayoutOrder
-list.Padding = UDim.new(0,5)
-
-local RF_RareDevilfruit = {
-    "Smoke", "Sand", "Rumble", "Quake", "Phoenix", "Ope", "Magma", "Light",
-    "Hollow", "Alice", "Gas", "Flare", "Dark", "Chilly", "Candy",
-    "Plasma", "Gravity", "Vampire", "Venom", "Snow", "spin",
-}
-local FruitToggles = {}
-for _, fruit in ipairs(RF_RareDevilfruit) do
-    local btn = Instance.new("TextButton", scroll)
-    btn.Size = UDim2.new(1,-10,0,30)
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-    btn.Text = fruit.." OFF"
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.fromRGB(200,200,200)
-    local state = false
-    FruitToggles[fruit] = state
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        FruitToggles[fruit] = state
-        btn.Text = fruit.." "..(state and "ON" or "OFF")
-        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
-    end)
-end
-list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    scroll.CanvasSize = UDim2.new(0,0,0,list.AbsoluteContentSize.Y+10)
-end)
-
--- Function nhặt trái
-local function pickFruit(fruitModel)
-    if player.Character and fruitModel:FindFirstChild("Handle") then
-        player.Character.HumanoidRootPart.CFrame = fruitModel.Handle.CFrame
-        task.wait(0.2)
-        fireclickdetector(fruitModel.Handle:FindFirstChild("ClickDetector"))
-    end
-end
-
+-- Spam skill
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(0.2) do
+        for key, state in pairs(AutoSkills) do
+            if state then
+                game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode[key], false, game)
+                task.wait(0.05)
+                game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode[key], false, game)
+            end
+        end
+    end
+end)
+
+FarmTab:AddToggle({Name="Auto Z", Default=false, Callback=function(v) AutoSkills.Z = v end})
+FarmTab:AddToggle({Name="Auto X", Default=false, Callback=function(v) AutoSkills.X = v end})
+FarmTab:AddToggle({Name="Auto C", Default=false, Callback=function(v) AutoSkills.C = v end})
+FarmTab:AddToggle({Name="Auto V", Default=false, Callback=function(v) AutoSkills.V = v end})
+
+--// ================= FARM HAKI =================
+local AutoHaki = false
+HakiTab:AddToggle({
+    Name="Auto Farm Haki (R)",
+    Default=false,
+    Callback=function(v)
+        AutoHaki = v
+        AutoSkills.R = v -- dùng phím R để bật haki liên tục
+    end
+})
+
+--// ================= AUTO FRUIT =================
+local RF_RareDevilfruit = {
+    "Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light",
+    "Hollow","Alice","Gas","Flare","Dark","Chilly","Candy",
+    "Plasma","Gravity","Vampire","Venom","Snow","Luck"
+}
+
+local FruitToggles = {}
+for _, fruitName in ipairs(RF_RareDevilfruit) do
+    FruitToggles[fruitName] = false
+end
+
+local function pickFruit(fruitModel)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and fruitModel:FindFirstChild("Handle") then
+        player.Character.HumanoidRootPart.CFrame = fruitModel.Handle.CFrame + Vector3.new(0,2,0)
+        task.wait(0.05)
+        local cd = fruitModel.Handle:FindFirstChildOfClass("ClickDetector")
+        if cd then fireclickdetector(cd) end
+    end
+end
+
+-- Check liên tục
+task.spawn(function()
+    while task.wait(0.2) do
         for _, v in pairs(workspace:GetChildren()) do
             if v:IsA("Tool") or v:IsA("Model") then
                 for fruit, enabled in pairs(FruitToggles) do
@@ -211,78 +87,65 @@ task.spawn(function()
     end
 end)
 
---// SETTINGS (Rejoin + Keybind)
-local rejoinBtn = Instance.new("TextButton", settingFrame)
-rejoinBtn.Size = UDim2.new(0,150,0,40)
-rejoinBtn.Position = UDim2.new(0,20,0,40)
-rejoinBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-rejoinBtn.Text = "Rejoin Server"
-rejoinBtn.Font = Enum.Font.GothamBold
-rejoinBtn.TextSize = 16
-rejoinBtn.TextColor3 = Color3.fromRGB(200,200,200)
-rejoinBtn.MouseButton1Click:Connect(function()
-    TeleportService:Teleport(game.PlaceId, player)
-end)
-
--- Keybind chọn phím để ẩn/hiện hub
-local keyLabel = Instance.new("TextLabel", settingFrame)
-keyLabel.Size = UDim2.new(0,200,0,30)
-keyLabel.Position = UDim2.new(0,20,0,100)
-keyLabel.BackgroundTransparency = 1
-keyLabel.TextColor3 = Color3.fromRGB(255,255,255)
-keyLabel.Font = Enum.Font.GothamBold
-keyLabel.TextSize = 14
-keyLabel.Text = "Toggle Key: LeftControl"
-
-local chooseBtn = Instance.new("TextButton", settingFrame)
-chooseBtn.Size = UDim2.new(0,150,0,30)
-chooseBtn.Position = UDim2.new(0,20,0,140)
-chooseBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-chooseBtn.Text = "Change Key"
-chooseBtn.Font = Enum.Font.GothamBold
-chooseBtn.TextSize = 14
-chooseBtn.TextColor3 = Color3.fromRGB(200,200,200)
-
-local toggleKey = Enum.KeyCode.LeftControl
-local hubVisible = true
-
-chooseBtn.MouseButton1Click:Connect(function()
-    keyLabel.Text = "Press any key..."
-    local conn; conn = UserInputService.InputBegan:Connect(function(input,gpe)
-        if not gpe and input.UserInputType == Enum.UserInputType.Keyboard then
-            toggleKey = input.KeyCode
-            keyLabel.Text = "Toggle Key: "..tostring(toggleKey.Name)
-            conn:Disconnect()
+-- Nếu có trái mới spawn
+workspace.ChildAdded:Connect(function(v)
+    task.wait(0.05)
+    if v:IsA("Tool") or v:IsA("Model") then
+        for fruit, enabled in pairs(FruitToggles) do
+            if enabled and string.find(v.Name, fruit) and string.find(v.Name, "Fruit") then
+                pickFruit(v)
+            end
         end
-    end)
-end)
-
-UserInputService.InputBegan:Connect(function(input,gpe)
-    if not gpe and input.KeyCode == toggleKey then
-        hubVisible = not hubVisible
-        ScreenGui.Enabled = hubVisible
     end
 end)
 
---// FARM LOGIC
-task.spawn(function()
-    while task.wait(0.1) do
-        if GuiService.MenuIsOpen then continue end
-        if currentTab == "Farm Fruit" then
-            for key,state in pairs(fruitToggles) do
-                if state then
-                    VirtualInputManager:SendKeyEvent(true,key,false,game)
-                    task.wait(0.05)
-                    VirtualInputManager:SendKeyEvent(false,key,false,game)
+-- UI Auto Fruit
+for _, fruitName in ipairs(RF_RareDevilfruit) do
+    AutoFruitTab:AddToggle({
+        Name = fruitName,
+        Default = false,
+        Callback = function(Value)
+            FruitToggles[fruitName] = Value
+        end    
+    })
+end
+
+--// ================= SETTINGS =================
+SettingTab:AddButton({
+    Name = "Rejoin Server",
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+    end
+})
+
+-- Hotkey toggle UI
+local UserInputService = game:GetService("UserInputService")
+local Hotkey = Enum.KeyCode.RightControl
+local hotkeyConnection
+
+SettingTab:AddTextbox({
+    Name = "Hotkey Toggle (default RightCtrl)",
+    Default = "RightControl",
+    TextDisappear = true,
+    Callback = function(value)
+        local success, key = pcall(function()
+            return Enum.KeyCode[value]
+        end)
+        if success and key then
+            Hotkey = key
+            if hotkeyConnection then hotkeyConnection:Disconnect() end
+            hotkeyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+                if not gpe and input.KeyCode == Hotkey then
+                    OrionLib:ToggleUI()
                 end
-            end
-        elseif currentTab == "Farm Haki" then
-            if hakiToggle then
-                VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.R,false,game)
-                task.wait(8)
-                VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.R,false,game)
-                task.wait(1)
-            end
+            end)
         end
+    end
+})
+
+-- Gắn hotkey ban đầu
+hotkeyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Hotkey then
+        OrionLib:ToggleUI()
     end
 end)
