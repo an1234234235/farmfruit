@@ -390,4 +390,69 @@ do
     hotLabel.BackgroundTransparency=1
     hotLabel.Font=Enum.Font.Gotham
     hotLabel.TextSize=13
-    hotLabel.TextColor3=Color3
+    hotLabel.TextColor3=Color3.fromRGB(200,200,200)
+    hotLabel.Text="Toggle Hotkey: "..tostring(Hotkey.Name)
+    y=y+36
+
+    local changeBtn=Instance.new("TextButton",p)
+    changeBtn.Size=UDim2.new(0,120,0,30)
+    changeBtn.Position=UDim2.new(0,8,0,y)
+    changeBtn.Text="Change Hotkey"
+    changeBtn.Font=Enum.Font.GothamBold
+    changeBtn.TextSize=13
+    changeBtn.BackgroundColor3=Color3.fromRGB(60,60,62)
+    changeBtn.TextColor3=Color3.fromRGB(230,230,230)
+    changeBtn.BorderSizePixel=0
+    Instance.new("UICorner",changeBtn).CornerRadius=UDim.new(0,6)
+
+    local infoLbl=Instance.new("TextLabel",p)
+    infoLbl.Size=UDim2.new(1,-10,0,40)
+    infoLbl.Position=UDim2.new(0,8,0,y+36)
+    infoLbl.BackgroundTransparency=1
+    infoLbl.Font=Enum.Font.Gotham
+    infoLbl.TextSize=12
+    infoLbl.TextColor3=Color3.fromRGB(170,170,170)
+    infoLbl.Text="Click 'Change Hotkey' then press key. Default: RightControl. Hub runs even when hidden."
+    infoLbl.TextWrapped=true
+
+    local conn
+    changeBtn.MouseButton1Click:Connect(function()
+        hotLabel.Text="Press a key..."
+        if conn then conn:Disconnect() end
+        conn=UserInputService.InputBegan:Connect(function(input,gpe)
+            if gpe then return end
+            if input.UserInputType==Enum.UserInputType.Keyboard then
+                Hotkey=input.KeyCode
+                hotLabel.Text="Toggle Hotkey: "..tostring(Hotkey.Name)
+                conn:Disconnect()
+            end
+        end)
+    end)
+
+    local rejoinBtn=Instance.new("TextButton",p)
+    rejoinBtn.Size=UDim2.new(0,140,0,34)
+    rejoinBtn.Position=UDim2.new(0,300,0,10)
+    rejoinBtn.Text="Rejoin Server"
+    rejoinBtn.Font=Enum.Font.GothamBold
+    rejoinBtn.TextSize=13
+    rejoinBtn.BackgroundColor3=Color3.fromRGB(60,60,62)
+    rejoinBtn.TextColor3=Color3.fromRGB(230,230,230)
+    rejoinBtn.BorderSizePixel=0
+    Instance.new("UICorner",rejoinBtn).CornerRadius=UDim.new(0,6)
+    rejoinBtn.MouseButton1Click:Connect(function()
+        pcall(function() TeleportService:Teleport(game.PlaceId,player) end)
+    end)
+end
+
+-- ===== Footer =====
+local foot=Instance.new("TextLabel")
+foot.Size=UDim2.new(1,0,0,18)
+foot.Position=UDim2.new(0,0,1,-18)
+foot.BackgroundTransparency=1
+foot.Font=Enum.Font.Gotham
+foot.TextSize=11
+foot.TextColor3=Color3.fromRGB(150,150,150)
+foot.Text="NTBA • Fruit Hub"
+foot.Parent=Main
+
+print("NTBA Fruit Hub initialized.")
