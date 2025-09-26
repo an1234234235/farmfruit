@@ -1,25 +1,26 @@
---// Xoá GUI cũ nếu tồn tại
+--// Xoá GUI cũ nếu có
 local player = game.Players.LocalPlayer
-if player:FindFirstChild("PlayerGui"):FindFirstChild("FarmUI") then
-    player.PlayerGui.FarmUI:Destroy()
-end
+local old = player:FindFirstChild("PlayerGui"):FindFirstChild("FarmUI")
+if old then old:Destroy() end
 
 --// Services
-local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local TeleportService = game:GetService("TeleportService")
+local GuiService = game:GetService("GuiService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
 
 --// Main GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FarmUI"
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 500, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -250, 0.1, 0)
+MainFrame.Size = UDim2.new(0,450,0,260)
+MainFrame.Position = UDim2.new(0.5,-225,0.1,0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ScreenGui
 
@@ -34,36 +35,9 @@ TabBar.BackgroundColor3 = Color3.fromRGB(45,45,45)
 TabBar.BorderSizePixel = 0
 TabBar.Parent = MainFrame
 
---// Dragging
-do
-    local dragging, dragInput, startPos, startInput
-    TabBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            startPos = input.Position
-            startInput = MainFrame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    TabBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - startPos
-            MainFrame.Position = UDim2.new(
-                startInput.X.Scale, startInput.X.Offset + delta.X,
-                startInput.Y.Scale, startInput.Y.Offset + delta.Y
-            )
-        end
-    end)
-end
+local tabCorner = Instance.new("UICorner")
+tabCorner.CornerRadius = UDim.new(0,10)
+tabCorner.Parent = TabBar
 
 --// Content Holder
 local ContentFrame = Instance.new("Frame")
@@ -72,180 +46,242 @@ ContentFrame.Position = UDim2.new(0,0,0,40)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
---// Tabs
-local TabNames = {"Farm Fruit","Farm Haki","Auto Fruit","Settings"}
-local Buttons, CurrentTab = {}, nil
-local Frames = {}
+--// Tabs setup
+local tabs = {
+    {Name="Farm Fruit", Icon="🍎"},
+    {Name="Farm Haki", Icon="⚡"},
+    {Name="Auto Fruit", Icon="🥭"},
+    {Name="Settings", Icon="⚙️"},
+}
+local buttons = {}
+local currentTab = nil
 
--- Create Content Frames
-for _,name in ipairs(TabNames) do
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1,0,1,0)
-    frame.Visible = false
-    frame.BackgroundTransparency = 1
-    frame.Name = name.."Frame"
-    frame.Parent = ContentFrame
-    Frames[name] = frame
+--// Frames cho từng tab
+local farmFruitFrame = Instance.new("Frame", ContentFrame)
+farmFruitFrame.Size = UDim2.new(1,0,1,0)
+farmFruitFrame.BackgroundTransparency = 1
+farmFruitFrame.Visible = false
+farmFruitFrame.Name = "Farm FruitContent"
+
+local hakiFrame = Instance.new("Frame", ContentFrame)
+hakiFrame.Size = UDim2.new(1,0,1,0)
+hakiFrame.BackgroundTransparency = 1
+hakiFrame.Visible = false
+hakiFrame.Name = "Farm HakiContent"
+
+local autoFruitFrame = Instance.new("Frame", ContentFrame)
+autoFruitFrame.Size = UDim2.new(1,0,1,0)
+autoFruitFrame.BackgroundTransparency = 1
+autoFruitFrame.Visible = false
+autoFruitFrame.Name = "Auto FruitContent"
+
+local settingFrame = Instance.new("Frame", ContentFrame)
+settingFrame.Size = UDim2.new(1,0,1,0)
+settingFrame.BackgroundTransparency = 1
+settingFrame.Visible = false
+settingFrame.Name = "SettingsContent"
+
+--// Switch tab
+local function switchTab(tabName)
+    for name, btn in pairs(buttons) do
+        local colorGoal = (name==tabName) and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
+        TweenService:Create(btn,TweenInfo.new(0.3),{BackgroundColor3=colorGoal}):Play()
+        btn.TextColor3 = (name==tabName) and Color3.fromRGB(255,255,255) or Color3.fromRGB(200,200,200)
+    end
+    currentTab = tabName
+    for _, child in ipairs(ContentFrame:GetChildren()) do
+        child.Visible = (child.Name == tabName.."Content")
+    end
 end
 
--- Create Tab Buttons
-for i,name in ipairs(TabNames) do
+--// Create tab buttons
+for i, tab in ipairs(tabs) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,120,1,0)
-    btn.Position = UDim2.new(0,(i-1)*125,0,0)
-    btn.Text = name
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.fromRGB(200,200,200)
+    btn.Size = UDim2.new(0.25,0,1,0)
+    btn.Position = UDim2.new((i-1)*0.25,0,0,0)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamBold
+    btn.Text = tab.Icon.." "..tab.Name
+    btn.TextSize = 14
+    btn.TextColor3 = Color3.fromRGB(200,200,200)
     btn.Parent = TabBar
-    Buttons[name] = btn
-    btn.MouseButton1Click:Connect(function()
-        for _,n in ipairs(TabNames) do
-            Frames[n].Visible = false
-            Buttons[n].BackgroundColor3 = Color3.fromRGB(60,60,60)
-        end
-        Frames[name].Visible = true
-        btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-        CurrentTab = name
-    end)
+    buttons[tab.Name] = btn
+    btn.MouseButton1Click:Connect(function() switchTab(tab.Name) end)
 end
-Frames["Farm Fruit"].Visible = true
-Buttons["Farm Fruit"].BackgroundColor3 = Color3.fromRGB(0,170,255)
-CurrentTab = "Farm Fruit"
+
+switchTab("Farm Fruit")
 
 --// FARM FRUIT (Z/X/C/V)
-local FruitKeys = {"Z","X","C","V"}
-local FruitToggles = {}
-for i,key in ipairs(FruitKeys) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,100,0,35)
-    btn.Position = UDim2.new(0,20,0,20+(i-1)*45)
+local fruitKeys = {"Z","X","C","V"}
+local fruitToggles = {}
+for i,key in ipairs(fruitKeys) do
+    local btn = Instance.new("TextButton", farmFruitFrame)
+    btn.Size = UDim2.new(0,80,0,35)
+    btn.Position = UDim2.new(0,20+(i-1)*100,0,40)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.Text = key.." OFF"
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 16
     btn.TextColor3 = Color3.fromRGB(200,200,200)
-    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    btn.BorderSizePixel = 0
-    btn.Parent = Frames["Farm Fruit"]
     local state = false
+    fruitToggles[key] = state
     btn.MouseButton1Click:Connect(function()
         state = not state
+        fruitToggles[key] = state
         btn.Text = key.." "..(state and "ON" or "OFF")
-        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,255) or Color3.fromRGB(50,50,50)
-        FruitToggles[key] = state
+        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
     end)
-    FruitToggles[key] = state
 end
 
 --// FARM HAKI (R)
-local hakiBtn = Instance.new("TextButton")
-hakiBtn.Size = UDim2.new(0,120,0,40)
-hakiBtn.Position = UDim2.new(0,20,0,20)
+local hakiBtn = Instance.new("TextButton", hakiFrame)
+hakiBtn.Size = UDim2.new(0,100,0,40)
+hakiBtn.Position = UDim2.new(0,20,0,40)
+hakiBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
 hakiBtn.Text = "R OFF"
 hakiBtn.Font = Enum.Font.GothamBold
 hakiBtn.TextSize = 16
 hakiBtn.TextColor3 = Color3.fromRGB(200,200,200)
-hakiBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-hakiBtn.BorderSizePixel = 0
-hakiBtn.Parent = Frames["Farm Haki"]
-
-local HakiToggle = false
+local hakiToggle = false
 hakiBtn.MouseButton1Click:Connect(function()
-    HakiToggle = not HakiToggle
-    hakiBtn.Text = "R "..(HakiToggle and "ON" or "OFF")
-    hakiBtn.BackgroundColor3 = HakiToggle and Color3.fromRGB(0,170,255) or Color3.fromRGB(50,50,50)
+    hakiToggle = not hakiToggle
+    hakiBtn.Text = "R "..(hakiToggle and "ON" or "OFF")
+    hakiBtn.BackgroundColor3 = hakiToggle and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
 end)
 
---// AUTO FRUIT
+--// AUTO FRUIT (scroll + Luck)
+local scroll = Instance.new("ScrollingFrame", autoFruitFrame)
+scroll.Size = UDim2.new(1,0,1,0)
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+scroll.ScrollBarThickness = 6
+scroll.BackgroundTransparency = 1
+
+local list = Instance.new("UIListLayout", scroll)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+list.Padding = UDim.new(0,5)
+
 local RF_RareDevilfruit = {
     "Smoke", "Sand", "Rumble", "Quake", "Phoenix", "Ope", "Magma", "Light",
     "Hollow", "Alice", "Gas", "Flare", "Dark", "Chilly", "Candy",
-    "Plasma", "Gravity", "Vampire", "Venom", "Snow",
+    "Plasma", "Gravity", "Vampire", "Venom", "Snow", "Luck",
 }
-local FruitPickToggles = {}
-
-local layout = Instance.new("UIListLayout", Frames["Auto Fruit"])
-layout.Padding = UDim.new(0,5)
-layout.FillDirection = Enum.FillDirection.Vertical
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-for _,fruit in ipairs(RF_RareDevilfruit) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0,150,0,30)
+local FruitToggles = {}
+for _, fruit in ipairs(RF_RareDevilfruit) do
+    local btn = Instance.new("TextButton", scroll)
+    btn.Size = UDim2.new(1,-10,0,30)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
     btn.Text = fruit.." OFF"
-    btn.Font = Enum.Font.Gotham
+    btn.Font = Enum.Font.GothamBold
     btn.TextSize = 14
     btn.TextColor3 = Color3.fromRGB(200,200,200)
-    btn.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    btn.BorderSizePixel = 0
-    btn.Parent = Frames["Auto Fruit"]
     local state = false
+    FruitToggles[fruit] = state
     btn.MouseButton1Click:Connect(function()
         state = not state
+        FruitToggles[fruit] = state
         btn.Text = fruit.." "..(state and "ON" or "OFF")
-        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,255) or Color3.fromRGB(50,50,50)
-        FruitPickToggles[fruit] = state
+        btn.BackgroundColor3 = state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,60)
     end)
-    FruitPickToggles[fruit] = false
+end
+list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    scroll.CanvasSize = UDim2.new(0,0,0,list.AbsoluteContentSize.Y+10)
+end)
+
+-- Function nhặt trái
+local function pickFruit(fruitModel)
+    if player.Character and fruitModel:FindFirstChild("Handle") then
+        player.Character.HumanoidRootPart.CFrame = fruitModel.Handle.CFrame
+        task.wait(0.2)
+        fireclickdetector(fruitModel.Handle:FindFirstChild("ClickDetector"))
+    end
 end
 
---// SETTINGS
-local rejoinBtn = Instance.new("TextButton")
+task.spawn(function()
+    while task.wait(1) do
+        for _, v in pairs(workspace:GetChildren()) do
+            if v:IsA("Tool") or v:IsA("Model") then
+                for fruit, enabled in pairs(FruitToggles) do
+                    if enabled and string.find(v.Name, fruit) and string.find(v.Name, "Fruit") then
+                        pickFruit(v)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--// SETTINGS (Rejoin + Keybind)
+local rejoinBtn = Instance.new("TextButton", settingFrame)
 rejoinBtn.Size = UDim2.new(0,150,0,40)
-rejoinBtn.Position = UDim2.new(0,20,0,20)
+rejoinBtn.Position = UDim2.new(0,20,0,40)
+rejoinBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
 rejoinBtn.Text = "Rejoin Server"
 rejoinBtn.Font = Enum.Font.GothamBold
 rejoinBtn.TextSize = 16
-rejoinBtn.TextColor3 = Color3.fromRGB(255,255,255)
-rejoinBtn.BackgroundColor3 = Color3.fromRGB(0,170,255)
-rejoinBtn.BorderSizePixel = 0
-rejoinBtn.Parent = Frames["Settings"]
-
+rejoinBtn.TextColor3 = Color3.fromRGB(200,200,200)
 rejoinBtn.MouseButton1Click:Connect(function()
     TeleportService:Teleport(game.PlaceId, player)
 end)
 
---// LOGIC
+-- Keybind chọn phím để ẩn/hiện hub
+local keyLabel = Instance.new("TextLabel", settingFrame)
+keyLabel.Size = UDim2.new(0,200,0,30)
+keyLabel.Position = UDim2.new(0,20,0,100)
+keyLabel.BackgroundTransparency = 1
+keyLabel.TextColor3 = Color3.fromRGB(255,255,255)
+keyLabel.Font = Enum.Font.GothamBold
+keyLabel.TextSize = 14
+keyLabel.Text = "Toggle Key: LeftControl"
+
+local chooseBtn = Instance.new("TextButton", settingFrame)
+chooseBtn.Size = UDim2.new(0,150,0,30)
+chooseBtn.Position = UDim2.new(0,20,0,140)
+chooseBtn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+chooseBtn.Text = "Change Key"
+chooseBtn.Font = Enum.Font.GothamBold
+chooseBtn.TextSize = 14
+chooseBtn.TextColor3 = Color3.fromRGB(200,200,200)
+
+local toggleKey = Enum.KeyCode.LeftControl
+local hubVisible = true
+
+chooseBtn.MouseButton1Click:Connect(function()
+    keyLabel.Text = "Press any key..."
+    local conn; conn = UserInputService.InputBegan:Connect(function(input,gpe)
+        if not gpe and input.UserInputType == Enum.UserInputType.Keyboard then
+            toggleKey = input.KeyCode
+            keyLabel.Text = "Toggle Key: "..tostring(toggleKey.Name)
+            conn:Disconnect()
+        end
+    end)
+end)
+
+UserInputService.InputBegan:Connect(function(input,gpe)
+    if not gpe and input.KeyCode == toggleKey then
+        hubVisible = not hubVisible
+        ScreenGui.Enabled = hubVisible
+    end
+end)
+
+--// FARM LOGIC
 task.spawn(function()
-    while task.wait(0.2) do
-        -- Farm Fruit
-        for key,state in pairs(FruitToggles) do
-            if state then
-                pcall(function()
+    while task.wait(0.1) do
+        if GuiService.MenuIsOpen then continue end
+        if currentTab == "Farm Fruit" then
+            for key,state in pairs(fruitToggles) do
+                if state then
                     VirtualInputManager:SendKeyEvent(true,key,false,game)
                     task.wait(0.05)
                     VirtualInputManager:SendKeyEvent(false,key,false,game)
-                end)
-            end
-        end
-
-        -- Farm Haki
-        if HakiToggle then
-            pcall(function()
-                VirtualInputManager:SendKeyEvent(true,"R",false,game)
-                task.wait(0.2)
-                VirtualInputManager:SendKeyEvent(false,"R",false,game)
-            end)
-        end
-
-        -- Auto Fruit Pick
-        for _,v in pairs(workspace:GetChildren()) do
-            if v:IsA("Tool") or v:IsA("Model") then
-                for fruit,state in pairs(FruitPickToggles) do
-                    if state and string.find(v.Name,fruit) and string.find(v.Name,"Fruit") then
-                        if v:FindFirstChild("Handle") then
-                            player.Character.HumanoidRootPart.CFrame = v.Handle.CFrame + Vector3.new(0,3,0)
-                            if v.Handle:FindFirstChild("ClickDetector") then
-                                fireclickdetector(v.Handle.ClickDetector)
-                            elseif v.Handle:FindFirstChildOfClass("ProximityPrompt") then
-                                fireproximityprompt(v.Handle:FindFirstChildOfClass("ProximityPrompt"))
-                            end
-                        end
-                    end
                 end
+            end
+        elseif currentTab == "Farm Haki" then
+            if hakiToggle then
+                VirtualInputManager:SendKeyEvent(true,Enum.KeyCode.R,false,game)
+                task.wait(8)
+                VirtualInputManager:SendKeyEvent(false,Enum.KeyCode.R,false,game)
+                task.wait(1)
             end
         end
     end
