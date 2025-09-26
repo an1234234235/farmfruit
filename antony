@@ -1,9 +1,20 @@
+--[[
+    Fruit Hub Script
+    Features:
+    - Farm Fruit (Auto Spam Skill Z/X/C/V)
+    - Farm Haki (Auto luyện R)
+    - Auto Fruit (Auto nhặt trái hiếm)
+    - Settings (Rejoin server)
+    GUI Library: OrionLib
+    Author: <your-name>
+]]
+
 --// Load OrionLib
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
 --// Main Window
 local Window = OrionLib:MakeWindow({
-    Name = "Fruit Hub",
+    Name = "🍎 Fruit Hub",
     HidePremium = false,
     SaveConfig = true,
     ConfigFolder = "FruitHub"
@@ -35,67 +46,32 @@ local SettingTab = Window:MakeTab({
 })
 
 ----------------------------------------------------
--- FARM FRUIT (skill spam Z/X/C/V example)
+-- FARM FRUIT (auto spam skill Z/X/C/V)
 ----------------------------------------------------
-FarmTab:AddToggle({
-    Name = "Auto Farm Z",
-    Default = false,
-    Callback = function(Value)
-        _G.FarmZ = Value
-        while _G.FarmZ do
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):SetKeyDown("Z")
-            task.wait(0.5)
-            game:GetService("VirtualUser"):SetKeyUp("Z")
-            task.wait(1)
-        end
-    end
-})
+local VirtualUser = game:GetService("VirtualUser")
 
-FarmTab:AddToggle({
-    Name = "Auto Farm X",
-    Default = false,
-    Callback = function(Value)
-        _G.FarmX = Value
-        while _G.FarmX do
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):SetKeyDown("X")
-            task.wait(0.5)
-            game:GetService("VirtualUser"):SetKeyUp("X")
-            task.wait(1)
-        end
-    end
-})
+local function AutoPressKey(key)
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode[key], false, game)
+    task.wait(0.05)
+    game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode[key], false, game)
+end
 
-FarmTab:AddToggle({
-    Name = "Auto Farm C",
-    Default = false,
-    Callback = function(Value)
-        _G.FarmC = Value
-        while _G.FarmC do
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):SetKeyDown("C")
-            task.wait(0.5)
-            game:GetService("VirtualUser"):SetKeyUp("C")
-            task.wait(1)
+local FarmKeys = {"Z", "X", "C", "V"}
+for _, key in ipairs(FarmKeys) do
+    FarmTab:AddToggle({
+        Name = "Auto Farm " .. key,
+        Default = false,
+        Callback = function(Value)
+            _G["Farm"..key] = Value
+            task.spawn(function()
+                while _G["Farm"..key] do
+                    AutoPressKey(key)
+                    task.wait(1)
+                end
+            end)
         end
-    end
-})
-
-FarmTab:AddToggle({
-    Name = "Auto Farm V",
-    Default = false,
-    Callback = function(Value)
-        _G.FarmV = Value
-        while _G.FarmV do
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):SetKeyDown("V")
-            task.wait(0.5)
-            game:GetService("VirtualUser"):SetKeyUp("V")
-            task.wait(1)
-        end
-    end
-})
+    })
+end
 
 ----------------------------------------------------
 -- FARM HAKI (auto luyện R)
@@ -105,18 +81,17 @@ HakiTab:AddToggle({
     Default = false,
     Callback = function(Value)
         _G.AutoHaki = Value
-        while _G.AutoHaki do
-            game:GetService("VirtualUser"):CaptureController()
-            game:GetService("VirtualUser"):SetKeyDown("R")
-            task.wait(0.5)
-            game:GetService("VirtualUser"):SetKeyUp("R")
-            task.wait(0.5)
-        end
+        task.spawn(function()
+            while _G.AutoHaki do
+                AutoPressKey("R")
+                task.wait(8) -- delay theo game
+            end
+        end)
     end
 })
 
 ----------------------------------------------------
--- AUTO FRUIT (từng trái toggle riêng)
+-- AUTO FRUIT (nhặt trái hiếm)
 ----------------------------------------------------
 local RF_RareDevilfruit = {
     "Smoke", "Sand", "Rumble", "Quake", "Phoenix", "Ope", "Magma", "Light",
@@ -124,38 +99,38 @@ local RF_RareDevilfruit = {
     "Plasma", "Gravity", "Vampire", "Venom", "Snow",
 }
 
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
 _G.AutoFruitPick = {}
 
--- Teleport nhặt trái
-local function TeleportToFruit(fruit)
-    if fruit and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+-- Hàm teleport + nhặt trái
+local function PickFruit(fruit)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame = fruit.CFrame + Vector3.new(0, 3, 0)
-        task.wait(0.1)
+        task.wait(0.2)
         if fruit:FindFirstChild("ClickDetector") then
             fireclickdetector(fruit.ClickDetector)
         end
     end
 end
 
--- Check workspace
+-- Vòng lặp tìm trái trong workspace
 RunService.Heartbeat:Connect(function()
     for _, v in pairs(workspace:GetChildren()) do
         if v:IsA("Tool") or v:FindFirstChild("Handle") then
-            for _, fruitName in pairs(RF_RareDevilfruit) do
-                if string.find(v.Name, fruitName) and _G.AutoFruitPick[fruitName] then
+            for fruitName, enabled in pairs(_G.AutoFruitPick) do
+                if enabled and string.find(v.Name, fruitName) then
                     local handle = v:FindFirstChild("Handle") or v
-                    TeleportToFruit(handle)
+                    PickFruit(handle)
                 end
             end
         end
     end
 end)
 
--- Tạo toggle cho từng trái
+-- Tạo toggle UI cho từng loại trái
 for _, fruitName in ipairs(RF_RareDevilfruit) do
     AutoFruitTab:AddToggle({
         Name = "Auto Pick " .. fruitName,
