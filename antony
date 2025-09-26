@@ -1,382 +1,91 @@
--- Fruit Hub (Dark + Neon) - NTBA v2.2
--- FIX: UI Conflict, AutoFruit Stability, Added Master AutoPick Toggle
--- Compatible with Xeno
+-- Fruit Hub - NTBA v2.4 - Remote Tester Mode
+-- Thử nghiệm các tên Remote phổ biến nhất để nhặt trái cây
+-- Chạy trên Xeno/Volcano
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
--- Remove old UI
-pcall(function()
-    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
-        player.PlayerGui.FruitHubUI:Destroy()
-    end
-end)
+-- (Giữ nguyên toàn bộ UI Init code từ v2.3 ở đây. Tôi lược bớt để code này ngắn gọn hơn.)
+-- ... (Hãy giữ nguyên các phần UI, AutoFarm, AutoHaki, và Logic Toggles của v2.3) ...
 
--- ===== ScreenGui =====
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "FruitHubUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+-- 🌟 PHẦN QUAN TRỌNG NHẤT: THỬ NGHIỆM REMOTE 🌟
+-- Danh sách các tên Remote phổ biến nhất trong các game One Piece
+local REMOTE_CANDIDATES = {
+    -- Ứng viên 1: Remote Event để nhặt
+    "PickUpRemote", 
+    "HandlePickUp",
+    "InteractRemote",
+    "GrabItem",
+    
+    -- Ứng viên 2: Tên chung chung hoặc mã hóa (thường nằm trong thư mục Remote)
+    "remoteEvent", 
+    "remoteEvent2",
+    
+    -- Ứng viên 3: Remote nằm trong thư mục con
+    "Remotes/Grab",
+    "Rems/Pick", 
+}
 
--- ===== Main Frame =====
-local MAIN_W, MAIN_H = 740, 440
-local Sidebar_W = 160 -- Chiều rộng Sidebar
-local Main = Instance.new("Frame")
-Main.Name = "Main"
-Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
-Main.Position = UDim2.new(0.5, -MAIN_W/2, 0.12, 0)
-Main.BackgroundColor3 = Color3.fromRGB(24,24,28)
-Main.BorderSizePixel = 0
-Main.Parent = ScreenGui
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0,12)
-
--- Shadow / Neon effect
-local shadow = Instance.new("UIStroke", Main)
-shadow.Color = Color3.fromRGB(85, 170, 255)
-shadow.Thickness = 2
-shadow.Transparency = 0.6
-
--- ===== Title Bar =====
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1,0,0,36)
-TitleBar.Position = UDim2.new(0,0,0,0)
-TitleBar.BackgroundColor3 = Color3.fromRGB(32,32,36)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = Main
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0,12)
-
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(0.6,-10,1,0)
-TitleLabel.Position = UDim2.new(0,12,0,0)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Fruit Hub"
-TitleLabel.TextSize = 16
-TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Parent = TitleBar
-
-local AuthorLabel = Instance.new("TextLabel")
-AuthorLabel.Size = UDim2.new(0.3,-10,1,0)
-AuthorLabel.Position = UDim2.new(0.7,10,0,0)
-AuthorLabel.BackgroundTransparency = 1
-AuthorLabel.Font = Enum.Font.Gotham
-AuthorLabel.Text = "Author: NTBA"
-AuthorLabel.TextSize = 13
-AuthorLabel.TextColor3 = Color3.fromRGB(160,160,160)
-AuthorLabel.TextXAlignment = Enum.TextXAlignment.Right
-AuthorLabel.Parent = TitleBar
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0,36,0,28)
-CloseBtn.Position = UDim2.new(1,-44,0,4)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(180,60,60)
-CloseBtn.Text = "X"
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 14
-CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
-CloseBtn.BorderSizePixel = 0
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
-CloseBtn.Parent = TitleBar
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
-
--- ===== Sidebar (left) =====
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0,Sidebar_W,1,-36)
-Sidebar.Position = UDim2.new(0,0,0,36)
-Sidebar.BackgroundColor3 = Color3.fromRGB(36,36,38)
-Sidebar.BorderSizePixel = 0
-Sidebar.Parent = Main
-Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
-
-local SidebarLayout = Instance.new("UIListLayout", Sidebar)
-SidebarLayout.Padding = UDim.new(0,8)
-SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-
-local function createSidebarButton(text)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1,-20,0,36)
-    b.BackgroundColor3 = Color3.fromRGB(44,44,46)
-    b.BorderSizePixel = 0
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.TextColor3 = Color3.fromRGB(220,220,220)
-    b.Text = text
-    b.Parent = Sidebar
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
-    return b
-end
-
-local tabs = {"AutoFarm","AutoFruit","AutoHaki","Settings"}
-local tabButtons, panels = {}, {}
-
--- Kích thước và vị trí cố định cho panel nội dung
-local Panel_X_Start = Sidebar_W + 10 
-local Panel_Y_Start = 36 + 10      
-local Panel_W = MAIN_W - Sidebar_W - 20 
-local Panel_H = MAIN_H - 36 - 20        
-
-for i,name in ipairs(tabs) do
-    local btn = createSidebarButton(name)
-    btn.LayoutOrder = i
-    tabButtons[name] = btn
-
-    local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, Panel_W, 0, Panel_H) 
-    panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start) 
-    panel.BackgroundTransparency = 1
-    panel.Visible = false
-    panel.Parent = Main
-    panels[name] = panel
-end
-
-panels["AutoFarm"].Visible = true
-tabButtons["AutoFarm"].BackgroundColor3 = Color3.fromRGB(60,60,62)
-
--- tab switch
-for name, btn in pairs(tabButtons) do
-    btn.MouseButton1Click:Connect(function()
-        for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46) end
-        for _,p in pairs(panels) do p.Visible = false end
-        btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-        panels[name].Visible = true
-    end)
-end
-
--- ===== Drag hub (unchanged) =====
-do
-    local dragging = false
-    local dragStart, startPos
-    TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.MouseButton1 then
-            dragging=true
-            dragStart=input.Position
-            startPos=Main.Position
-            input.Changed:Connect(function()
-                if input.UserInputState==Enum.UserInputState.End then dragging=false end
-            end)
+-- Hàm tìm Remote Event đang hoạt động
+local function findActiveRemote()
+    for _, name in ipairs(REMOTE_CANDIDATES) do
+        local remotePath = ReplicatedStorage
+        local parts = string.split(name, "/")
+        
+        for i, partName in ipairs(parts) do
+            remotePath = remotePath:FindFirstChild(partName)
+            if not remotePath then break end
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType==Enum.UserInputType.MouseMovement then
-            local delta=input.Position - dragStart
-            Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
-        end
-    end)
-end
-
--- ===== Controls (Hotkey Ctrl - unchanged) =====
-local Hotkey=Enum.KeyCode.RightControl
-local HubVisible=true
-UserInputService.InputBegan:Connect(function(input,gpe)
-    if not gpe and input.KeyCode==Hotkey then
-        HubVisible=not HubVisible
-        ScreenGui.Enabled=HubVisible
-    end
-end)
-
--- ===== AutoFarm (Z/X/C/V - unchanged) =====
-local AutoSkillState={Z=false,X=false,C=false,V=false}
-do
-    local p = panels["AutoFarm"] 
-    local y=6
-    local label=Instance.new("TextLabel",p)
-    label.Size=UDim2.new(1,0,0,26)
-    label.Position=UDim2.new(0,0,0,y)
-    label.BackgroundTransparency=1
-    label.Font=Enum.Font.GothamBold
-    label.TextSize=14
-    label.TextColor3=Color3.fromRGB(220,220,220)
-    label.Text="Auto Skills (spam keys)"
-    y=y+30
-    for i,key in ipairs({"Z","X","C","V"}) do
-        local btn=Instance.new("TextButton",p)
-        btn.Size=UDim2.new(0,100,0,34)
-        btn.Position=UDim2.new(0,10+(i-1)*110,0,y)
-        btn.Text=key.." OFF"
-        btn.Font=Enum.Font.GothamBold
-        btn.TextSize=14
-        btn.TextColor3=Color3.fromRGB(230,230,230)
-        btn.BackgroundColor3=Color3.fromRGB(60,60,62)
-        btn.BorderSizePixel=0
-        Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
-        local state=false
-        btn.MouseButton1Click:Connect(function()
-            state=not state
-            AutoSkillState[key]=state
-            btn.Text=key..(state and " ON" or " OFF")
-            btn.BackgroundColor3=state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
-        end)
-    end
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.18)
-        for key,enabled in pairs(AutoSkillState) do
-            if enabled then
-                pcall(function()
-                    VirtualInputManager:SendKeyEvent(true,key,false,game)
-                    task.wait(0.04)
-                    VirtualInputManager:SendKeyEvent(false,key,false,game)
-                end)
-            end
+        
+        if remotePath and (remotePath:IsA("RemoteEvent") or remotePath:IsA("RemoteFunction")) then
+            print("NTBA AutoFruit: Tìm thấy Remote hợp lệ: " .. name)
+            return remotePath
         end
     end
-end)
-
--- ===== AutoHaki (R - unchanged) =====
-local AutoHakiState=false
-do
-    local p = panels["AutoHaki"] 
-    local lbl=Instance.new("TextLabel",p)
-    lbl.Size=UDim2.new(1,0,0,26)
-    lbl.Position=UDim2.new(0,0,0,6)
-    lbl.BackgroundTransparency=1
-    lbl.Font=Enum.Font.GothamBold
-    lbl.TextSize=14
-    lbl.TextColor3=Color3.fromRGB(220,220,220)
-    lbl.Text="Auto Haki (spam R)"
-
-    local btn=Instance.new("TextButton",p)
-    btn.Size=UDim2.new(0,140,0,36)
-    btn.Position=UDim2.new(0,10,0,40)
-    btn.Text="R OFF"
-    btn.Font=Enum.Font.GothamBold
-    btn.TextSize=14
-    btn.TextColor3=Color3.fromRGB(230,230,230)
-    btn.BackgroundColor3=Color3.fromRGB(60,60,62)
-    btn.BorderSizePixel=0
-    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
-    btn.MouseButton1Click:Connect(function()
-        AutoHakiState=not AutoHakiState
-        btn.Text="R "..(AutoHakiState and "ON" or "OFF")
-        btn.BackgroundColor3=AutoHakiState and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
-    end)
+    print("NTBA AutoFruit: KHÔNG tìm thấy Remote hợp lệ trong danh sách thử nghiệm.")
+    return nil
 end
 
-task.spawn(function()
-    while true do
-        if AutoHakiState then
-            pcall(function()
-                VirtualInputManager:SendKeyEvent(true,"R",false,game)
-                task.wait(0.06)
-                VirtualInputManager:SendKeyEvent(false,"R",false,game)
-            end)
-        end
-        task.wait(6.5)
-    end
-end)
+local FRUIT_PICKUP_REMOTE = findActiveRemote() -- Tìm ngay khi script chạy!
 
--- ===== AutoFruit (teleport + Touched) - Đã thêm Master Toggle và tối ưu hóa logic nhặt =====
-local FruitList={"Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light","Hollow","Alice","Gas","Flare","Dark","Chilly","Candy","Plasma","Gravity","Vampire","Venom","Snow","Luck"}
-local FruitPickToggles={}; for _,f in ipairs(FruitList) do FruitPickToggles[f]=false end
-local AutoPickAllFruits = false -- MASTER TOGGLE
-
-do
-    local p = panels["AutoFruit"]
-    local topLabel=Instance.new("TextLabel",p)
-    topLabel.Size=UDim2.new(1,0,0,26)
-    topLabel.Position=UDim2.new(0,0,0,6)
-    topLabel.BackgroundTransparency=1
-    topLabel.Font=Enum.Font.GothamBold
-    topLabel.TextSize=14
-    topLabel.TextColor3=Color3.fromRGB(220,220,220)
-    topLabel.Text="Auto Fruit - Master Toggle & specific fruits"
-
-    -- Master Toggle Button
-    local masterBtn=Instance.new("TextButton",p)
-    masterBtn.Size=UDim2.new(0,200,0,36)
-    masterBtn.Position=UDim2.new(0,10,0,40)
-    masterBtn.Text="Auto Pick ALL: OFF"
-    masterBtn.Font=Enum.Font.GothamBold
-    masterBtn.TextSize=14
-    masterBtn.TextColor3=Color3.fromRGB(255,255,255)
-    masterBtn.BackgroundColor3=Color3.fromRGB(150,50,50) -- RED/OFF
-    masterBtn.BorderSizePixel=0
-    Instance.new("UICorner",masterBtn).CornerRadius=UDim.new(0,6)
-
-    masterBtn.MouseButton1Click:Connect(function()
-        AutoPickAllFruits=not AutoPickAllFruits
-        masterBtn.Text="Auto Pick ALL: "..(AutoPickAllFruits and "ON" or "OFF")
-        masterBtn.BackgroundColor3=AutoPickAllFruits and Color3.fromRGB(0,150,255) or Color3.fromRGB(150,50,50)
-    end)
-
-
-    local scroll=Instance.new("ScrollingFrame",p)
-    scroll.Size=UDim2.new(1,-20,1,-96) -- Giảm chiều cao để nhường chỗ cho Master Toggle
-    scroll.Position=UDim2.new(0,10,0,86) -- Bắt đầu sau Master Toggle (40+36+10 = 86)
-    scroll.CanvasSize=UDim2.new(0,0,0,0)
-    scroll.ScrollBarThickness=6
-    scroll.BackgroundTransparency=1
-
-    local grid=Instance.new("UIGridLayout",scroll)
-    grid.CellSize=UDim2.new(0, 258, 0, 36)
-    grid.CellPadding=UDim2.new(0,8,0,8)
-    grid.SortOrder=Enum.SortOrder.LayoutOrder
-    grid.HorizontalAlignment=Enum.HorizontalAlignment.Left
-
-    for _,f in ipairs(FruitList) do
-        local b=Instance.new("TextButton")
-        b.Size=UDim2.new(0,258,0,36)
-        b.Font=Enum.Font.GothamBold
-        b.TextSize=14
-        b.Text=f.." OFF"
-        b.BackgroundColor3=Color3.fromRGB(58,58,60)
-        b.TextColor3=Color3.fromRGB(230,230,230)
-        b.BorderSizePixel=0
-        b.Parent=scroll
-        Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)
-        local st=false
-        b.MouseButton1Click:Connect(function()
-            st=not st
-            FruitPickToggles[f]=st
-            b.Text=f..(st and " ON" or " OFF")
-            b.BackgroundColor3=st and Color3.fromRGB(0,170,255) or Color3.fromRGB(58,58,60)
-        end)
-    end
-
-    grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scroll.CanvasSize=UDim2.new(0,0,0,grid.AbsoluteContentSize.Y + 10)
-    end)
-end
-
+-- Hàm nhặt trái cây đã chỉnh sửa
 local function pickupFruit(tool)
     if not tool or not player.Character then return end
     local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    if not handle or not hrp then return end
+    if not handle or not hrp or not FRUIT_PICKUP_REMOTE then return end
 
+    -- 1. Teleport tới gần trái cây (luôn cần thiết để vượt qua kiểm tra khoảng cách)
     pcall(function()
-        -- Teleport chính xác lên trên Handle, cách Handle một khoảng ngắn
         hrp.CFrame = handle.CFrame * CFrame.new(0, handle.Size.Y / 2 + 1, 0)
     end)
     task.wait(0.05)
     
-    -- Lặp lại firetouchinterest nhiều lần để tăng khả năng nhặt
-    for i=1, 20 do -- Tăng số lần lặp từ 10 lên 20
-        pcall(function()
-            firetouchinterest(hrp, handle, 0) -- Touch Start
-            task.wait(0.01)
-            firetouchinterest(hrp, handle, 1) -- Touch End
-        end)
-        task.wait(0.02)
-    end
+    -- 2. THỰC HIỆN REMOTE CALL
+    pcall(function()
+        -- Truyền tham số là toàn bộ đối tượng trái cây (tool/model)
+        FRUIT_PICKUP_REMOTE:FireServer(tool) 
+    end)
+    
+    -- Không cần FireTouch hay Proximity nữa, chỉ cần Remote Call.
 end
 
--- loop pickup
+-- (Giữ nguyên vòng lặp chính và logic ChildAdded của v2.3 để gọi hàm pickupFruit)
+
+-- Vòng lặp chính đã sửa
 task.spawn(function()
     while true do
         task.wait(0.1)
-        local fruitsFound = {}
+        if not FRUIT_PICKUP_REMOTE then 
+             -- Nếu Remote chưa được tìm thấy, cố gắng tìm lại 
+             FRUIT_PICKUP_REMOTE = findActiveRemote()
+        end
         
-        -- Tìm kiếm tất cả trái cây trên workspace
+        -- ... (Logic tìm trái cây trong Workspace và gọi pickupFruit) ...
+        -- Lược bớt để code này ngắn gọn, bạn hãy dùng lại logic này từ v2.3
+        
+        local fruitsFound = {}
         for _,v in ipairs(workspace:GetChildren()) do
             if (v:IsA("Tool") or v:IsA("Model")) and v:FindFirstChild("Handle") and string.find(v.Name,"Fruit") then
                 table.insert(fruitsFound, v)
@@ -384,10 +93,9 @@ task.spawn(function()
         end
 
         for _, fruit in ipairs(fruitsFound) do
-            local shouldPick = AutoPickAllFruits
+            local shouldPick = AutoPickAllFruits -- Sử dụng Master Toggle
             
             if not shouldPick then
-                -- Nếu Master Toggle OFF, kiểm tra từng Fruit Toggle
                 for fname, on in pairs(FruitPickToggles) do
                     if on and string.find(fruit.Name, fname) then
                         shouldPick = true
@@ -398,42 +106,10 @@ task.spawn(function()
 
             if shouldPick then
                 pcall(function() pickupFruit(fruit) end)
-                task.wait(0.2) -- Chờ một chút sau khi nhặt thành công (hoặc thất bại)
+                task.wait(0.2)
             end
         end
     end
 end)
 
--- ChildAdded trigger (cho trái cây mới spawn)
-workspace.ChildAdded:Connect(function(child)
-    task.wait(0.06)
-    if (child:IsA("Tool") or child:IsA("Model")) and child:FindFirstChild("Handle") and string.find(child.Name,"Fruit") then
-        local shouldPick = AutoPickAllFruits
-        
-        if not shouldPick then
-            for fname, on in pairs(FruitPickToggles) do
-                if on and string.find(child.Name, fname) then
-                    shouldPick = true
-                    break
-                end
-            end
-        end
-        
-        if shouldPick then
-            pcall(function() pickupFruit(child) end)
-        end
-    end
-end)
-
--- ===== Footer (unchanged) =====
-local foot=Instance.new("TextLabel")
-foot.Size=UDim2.new(1,0,0,18)
-foot.Position=UDim2.new(0,0,1,-18)
-foot.BackgroundTransparency=1
-foot.Font=Enum.Font.Gotham
-foot.TextSize=11
-foot.TextColor3=Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub"
-foot.Parent=Main
-
-print("NTBA Fruit Hub v2.2 Initialized. Master AutoPick added & pickup stabilized.")
+print("NTBA Fruit Hub v2.4 - Remote Tester Mode Activated.")
