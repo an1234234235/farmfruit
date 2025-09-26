@@ -7,7 +7,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local TeleportService = game:GetService("TeleportService")
-
 local player = Players.LocalPlayer
 
 -- Remove old UI
@@ -25,6 +24,7 @@ ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 -- ===== Main Frame =====
 local MAIN_W, MAIN_H = 740, 440
+local Sidebar_W = 160 -- Chiều rộng Sidebar
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
@@ -86,7 +86,7 @@ CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
 -- ===== Sidebar (left) =====
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0,160,1,-36)
+Sidebar.Size = UDim2.new(0,Sidebar_W,1,-36)
 Sidebar.Position = UDim2.new(0,0,0,36)
 Sidebar.BackgroundColor3 = Color3.fromRGB(36,36,38)
 Sidebar.BorderSizePixel = 0
@@ -116,19 +116,26 @@ end
 local tabs = {"AutoFarm","AutoFruit","AutoHaki","Settings"}
 local tabButtons, panels = {}, {}
 
+-- Tính toán kích thước và vị trí cho panel nội dung (bên phải Sidebar)
+local Panel_X_Start = Sidebar_W + 10 -- Bắt đầu sau Sidebar (160) + 10px lề
+local Panel_Y_Start = 36 + 10      -- Bắt đầu sau TitleBar (36) + 10px lề
+local Panel_W = MAIN_W - Sidebar_W - 20 -- Chiều rộng Main (740) - Sidebar (160) - 20px lề trái/phải = 560
+local Panel_H = MAIN_H - 36 - 20        -- Chiều cao Main (440) - TitleBar (36) - 20px lề trên/dưới = 384
+
 for i,name in ipairs(tabs) do
     local btn = createSidebarButton(name)
     btn.LayoutOrder = i
     tabButtons[name] = btn
 
     local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(1,-10,1,-20)
-    panel.Position = UDim2.new(0,10,0,10)
+    panel.Size = UDim2.new(0, Panel_W, 0, Panel_H) -- Kích thước cố định 560x384
+    panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start) -- Vị trí cố định (170, 46)
     panel.BackgroundTransparency = 1
     panel.Visible = false
     panel.Parent = Main
     panels[name] = panel
 end
+
 panels["AutoFarm"].Visible = true
 tabButtons["AutoFarm"].BackgroundColor3 = Color3.fromRGB(60,60,62)
 
@@ -164,7 +171,7 @@ do
     end)
 end
 
--- ===== Controls =====
+-- ===== Controls (Hotkey Ctrl) =====
 local Hotkey=Enum.KeyCode.RightControl
 local HubVisible=true
 UserInputService.InputBegan:Connect(function(input,gpe)
@@ -177,8 +184,9 @@ end)
 -- ===== AutoFarm (Z/X/C/V) =====
 local AutoSkillState={Z=false,X=false,C=false,V=false}
 do
+    local p = panels["AutoFarm"] -- Panel hiện tại
     local y=6
-    local label=Instance.new("TextLabel",panels["AutoFarm"])
+    local label=Instance.new("TextLabel",p)
     label.Size=UDim2.new(1,0,0,26)
     label.Position=UDim2.new(0,0,0,y)
     label.BackgroundTransparency=1
@@ -188,7 +196,7 @@ do
     label.Text="Auto Skills (spam keys)"
     y=y+30
     for i,key in ipairs({"Z","X","C","V"}) do
-        local btn=Instance.new("TextButton",panels["AutoFarm"])
+        local btn=Instance.new("TextButton",p)
         btn.Size=UDim2.new(0,100,0,34)
         btn.Position=UDim2.new(0,10+(i-1)*110,0,y)
         btn.Text=key.." OFF"
@@ -226,7 +234,8 @@ end)
 -- ===== AutoHaki (R) =====
 local AutoHakiState=false
 do
-    local lbl=Instance.new("TextLabel",panels["AutoHaki"])
+    local p = panels["AutoHaki"] -- Panel hiện tại
+    local lbl=Instance.new("TextLabel",p)
     lbl.Size=UDim2.new(1,0,0,26)
     lbl.Position=UDim2.new(0,0,0,6)
     lbl.BackgroundTransparency=1
@@ -235,7 +244,7 @@ do
     lbl.TextColor3=Color3.fromRGB(220,220,220)
     lbl.Text="Auto Haki (spam R)"
 
-    local btn=Instance.new("TextButton",panels["AutoHaki"])
+    local btn=Instance.new("TextButton",p)
     btn.Size=UDim2.new(0,140,0,36)
     btn.Position=UDim2.new(0,10,0,40)
     btn.Text="R OFF"
@@ -265,10 +274,9 @@ task.spawn(function()
     end
 end)
 
--- ===== AutoFruit (teleport + Touched) =====
+-- ===== AutoFruit (teleport + Touched) - Đã sửa lỗi UI Grid Layout (2 cột không chồng) =====
 local FruitList={"Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light","Hollow","Alice","Gas","Flare","Dark","Chilly","Candy","Plasma","Gravity","Vampire","Venom","Snow","Luck"}
 local FruitPickToggles={}; for _,f in ipairs(FruitList) do FruitPickToggles[f]=false end
-
 do
     local p = panels["AutoFruit"]
     local topLabel=Instance.new("TextLabel",p)
@@ -281,21 +289,23 @@ do
     topLabel.Text="Auto Fruit - toggle fruits"
 
     local scroll=Instance.new("ScrollingFrame",p)
-    scroll.Size=UDim2.new(1,-20,1,-50)
+    scroll.Size=UDim2.new(1,-20,1,-50) -- Giữ nguyên 100% chiều rộng panel trừ lề 20px, 100% chiều cao trừ lề 50px
     scroll.Position=UDim2.new(0,10,0,36)
     scroll.CanvasSize=UDim2.new(0,0,0,0)
     scroll.ScrollBarThickness=6
     scroll.BackgroundTransparency=1
 
     local grid=Instance.new("UIGridLayout",scroll)
-    grid.CellSize=UDim2.new(0,140,0,36)
+    -- CellSize và CellPadding được giữ để đảm bảo 2 cột
+    local Cell_W = (Panel_W - 20) / 2 - 8 -- Panel_W (560) - 20px lề Scroll - 8px CellPadding = 532. 532/2 = 266. 266 - 8px CellPadding = 258. -> Sẽ fix lại CellSize/Padding cho đẹp 2 cột
+    grid.CellSize=UDim2.new(0, 258, 0, 36) -- Đã tính toán lại để vừa 2 cột trong 560px
     grid.CellPadding=UDim2.new(0,8,0,8)
     grid.SortOrder=Enum.SortOrder.LayoutOrder
-    grid.HorizontalAlignment=Enum.HorizontalAlignment.Center
+    grid.HorizontalAlignment=Enum.HorizontalAlignment.Left -- Đổi sang Left để 2 cột sát lề trái
 
     for _,f in ipairs(FruitList) do
         local b=Instance.new("TextButton")
-        b.Size=UDim2.new(0,140,0,36)
+        b.Size=UDim2.new(0,258,0,36)
         b.Font=Enum.Font.GothamBold
         b.TextSize=14
         b.Text=f.." OFF"
@@ -314,7 +324,7 @@ do
     end
 
     grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scroll.CanvasSize=UDim2.new(0,0,0,grid.AbsoluteContentSize.Y+10)
+        scroll.CanvasSize=UDim2.new(0,0,0,grid.AbsoluteContentSize.Y + 10)
     end)
 end
 
@@ -345,6 +355,8 @@ task.spawn(function()
         for _,v in ipairs(workspace:GetChildren()) do
             if (v:IsA("Tool") or v:IsA("Model")) and v:FindFirstChild("Handle") then
                 for fname,on in pairs(FruitPickToggles) do
+                    -- Sử dụng string.find(..., ..., 1, true) để tìm kiếm chính xác hơn (case sensitive, không dùng pattern)
+                    -- Tuy nhiên, để linh hoạt, mình vẫn dùng string.find mặc định.
                     if on and string.find(v.Name,fname) and string.find(v.Name,"Fruit") then
                         pcall(function() pickupFruit(v) end)
                     end
@@ -376,4 +388,4 @@ foot.TextColor3=Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Fruit Hub"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v2 initialized.")
+print("NTBA Fruit Hub v2.1 initialized. UI Conflict Fixed.")
