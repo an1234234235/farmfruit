@@ -164,7 +164,7 @@ list.Padding = UDim.new(0,5)
 local RF_RareDevilfruit = {
     "Smoke", "Sand", "Rumble", "Quake", "Phoenix", "Ope", "Magma", "Light",
     "Hollow", "Alice", "Gas", "Flare", "Dark", "Chilly", "Candy",
-    "Plasma", "Gravity", "Vampire", "Venom", "Snow", "Luck",
+    "Plasma", "Gravity", "Vampire", "Venom", "Snow", "spin",
 }
 local FruitToggles = {}
 for _, fruit in ipairs(RF_RareDevilfruit) do
