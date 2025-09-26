@@ -1,12 +1,20 @@
--- Fruit Hub (Dark + Neon) - NTBA v2.9 - FINAL REMOTE FIX (Pickup Remote Argument)
--- Đã điều chỉnh tham số truyền vào Remote Call là Part chính ("Main" hoặc "Handle").
+-- Fruit Hub (Dark + Neon) - NTBA v5.0 - AUTO FARM NPC FOCUS (FINAL CODE)
+-- Đã loại bỏ chức năng Auto Fruit bị chặn. Thay bằng Auto Farm NPC mạnh mẽ hơn.
+-- Bao gồm Auto Skills (Z/X/C/V) và Auto Haki (R).
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
+local Character = player.Character or player.CharacterAdded:Wait()
+local hrp = Character:WaitForChild("HumanoidRootPart")
+
+-- Biến kiểm soát Farm
+local AutoFarmNPC = false
+local FarmRadius = 150 -- Bán kính tìm kiếm NPC
+local AutoSkillState={Z=false,X=false,C=false,V=false} -- State cho Auto Farm (Z,X,C,V)
+local AutoHakiState=false -- State cho Auto Haki (R)
 
 -- Remove old UI
 pcall(function()
@@ -18,7 +26,7 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- ===== UI & CONTROLS (Giữ nguyên) =====
+-- ===== UI & CONTROLS =====
 local MAIN_W, MAIN_H = 740, 440
 local Sidebar_W = 160
 local ScreenGui = Instance.new("ScreenGui")
@@ -128,7 +136,8 @@ SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
-local tabs = {"AutoFarm","AutoFruit","AutoHaki","Settings"}
+-- Tên Tabs: AutoFarm (Skills), AutoNPC (Mới), AutoHaki, Settings
+local tabs = {"AutoFarm","AutoNPC","AutoHaki","Settings"}
 local tabButtons, panels = {}, {}
 
 local Panel_X_Start = Sidebar_W + 10 
@@ -172,8 +181,8 @@ for name, btn in pairs(tabButtons) do
     end)
 end
 
--- AutoFarm (Z/X/C/V - unchanged)
-local AutoSkillState={Z=false,X=false,C=false,V=false}
+
+-- AutoFarm (Skills: Z/X/C/V)
 do
     local p = panels["AutoFarm"] 
     local y=6
@@ -207,11 +216,12 @@ do
     end
 end
 
+-- Skill Spam Loop
 task.spawn(function()
     while true do
         task.wait(0.18)
         for key,enabled in pairs(AutoSkillState) do
-            if enabled then
+            if enabled and not AutoFarmNPC then -- Chỉ spam khi không Auto Farm NPC (vì Auto Farm sẽ tự gọi)
                 pcall(function()
                     VirtualInputManager:SendKeyEvent(true,key,false,game)
                     task.wait(0.04)
@@ -222,10 +232,125 @@ task.spawn(function()
     end
 end)
 
--- AutoHaki (R - unchanged)
-local AutoHakiState=false
+
+-- Auto Farm NPC (Thay thế Auto Fruit)
+local AutoNPCPanel = panels["AutoNPC"]
+do 
+    local p = AutoNPCPanel 
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, 26)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 170, 0)
+    label.Text = "AUTO FARM NPC (HIỆU QUẢ NHẤT)"
+    y = y + 30
+
+    local masterBtn = Instance.new("TextButton", p)
+    masterBtn.Size = UDim2.new(0, 200, 0, 36)
+    masterBtn.Position = UDim2.new(0, 10, 0, y)
+    masterBtn.Text = "Auto Farm NPC: OFF"
+    masterBtn.Font = Enum.Font.GothamBold
+    masterBtn.TextSize = 14
+    masterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    masterBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) 
+    masterBtn.BorderSizePixel = 0
+    Instance.new("UICorner", masterBtn).CornerRadius = UDim.new(0, 6)
+
+    masterBtn.MouseButton1Click:Connect(function()
+        AutoFarmNPC = not AutoFarmNPC
+        masterBtn.Text = "Auto Farm NPC: " .. (AutoFarmNPC and "ON" or "OFF")
+        masterBtn.BackgroundColor3 = AutoFarmNPC and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(150, 50, 50)
+    end)
+    y = y + 46
+
+    local lblRange = Instance.new("TextLabel", p)
+    lblRange.Size = UDim2.new(0, 250, 0, 20)
+    lblRange.Position = UDim2.new(0, 10, 0, y)
+    lblRange.BackgroundTransparency = 1
+    lblRange.Font = Enum.Font.Gotham
+    lblRange.TextSize = 13
+    lblRange.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lblRange.Text = "Phạm vi tìm kiếm: " .. FarmRadius .. " studs (Mặc định)"
+    lblRange.TextXAlignment = Enum.TextXAlignment.Left
+    y = y + 26
+    
+    local btnInfo = Instance.new("TextLabel", p)
+    btnInfo.Size = UDim2.new(1, -20, 0, 40)
+    btnInfo.Position = UDim2.new(0, 10, 0, y)
+    btnInfo.BackgroundTransparency = 1
+    btnInfo.Font = Enum.Font.GothamBold
+    btnInfo.TextSize = 12
+    btnInfo.TextColor3 = Color3.fromRGB(255, 170, 170)
+    btnInfo.TextXAlignment = Enum.TextXAlignment.Left
+    btnInfo.Text = "CẦN LÀM: BẬT Auto Skills (Z, X, C, V) trong tab AutoFarm để sử dụng chiêu!"
+    y = y + 50
+end
+
+-- HÀM AUTO FARM CHÍNH
+local function findAndFarmNPC()
+    local targetNPC = nil
+    local shortestDistance = FarmRadius + 1
+
+    -- Tìm kiếm NPC (Humanoid) trong Workspace
+    for _, v in ipairs(workspace:GetChildren()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+            -- Loại bỏ chính người chơi và các NPC có tên đặc biệt (ví dụ: Boss) nếu cần
+            if v.Name ~= player.Name and not v:FindFirstChild("LockFruit") then 
+                local npcHR = v:FindFirstChild("HumanoidRootPart")
+                if npcHR and hrp then
+                    local distance = (hrp.Position - npcHR.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        targetNPC = npcHR
+                    end
+                end
+            end
+        end
+    end
+
+    if targetNPC then
+        -- 1. Teleport đến gần NPC (Cách 10 studs)
+        pcall(function()
+            local direction = (hrp.Position - targetNPC.Position).Unit
+            hrp.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -10) -- Đứng sau NPC 10 studs
+        end)
+        
+        -- 2. Spam Skills (Sử dụng các skill đã được BẬT)
+        for i = 1, 3 do 
+            for key, enabled in pairs(AutoSkillState) do
+                if enabled then
+                    pcall(function()
+                        VirtualInputManager:SendKeyEvent(true, key, false, game)
+                        task.wait(0.04)
+                        VirtualInputManager:SendKeyEvent(false, key, false, game)
+                    end)
+                end
+            end
+            task.wait(0.3)
+        end
+        return true 
+    end
+    return false
+end
+
+-- LOOP AUTO FARM
+task.spawn(function()
+    while true do
+        if AutoFarmNPC and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
+            findAndFarmNPC()
+        end
+        task.wait(0.5) 
+    end
+end)
+
+
+-- AutoHaki (R)
+local AutoHakiPanel = panels["AutoHaki"]
 do
-    local p = panels["AutoHaki"] 
+    local p = AutoHakiPanel 
     local lbl=Instance.new("TextLabel",p)
     lbl.Size=UDim2.new(1,0,0,26)
     lbl.Position=UDim2.new(0,0,0,6)
@@ -265,179 +390,7 @@ task.spawn(function()
     end
 end)
 
--- ===== AutoFruit (Remote Call Logic) =====
-local FruitList={"Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light","Hollow","Alice","Gas","Flare","Dark","Chilly","Candy","Plasma","Gravity","Vampire","Venom","Snow","Luck"}
-local FruitPickToggles={}; for _,f in ipairs(FruitList) do FruitPickToggles[f]=false end
-local AutoPickAllFruits = false -- MASTER TOGGLE
-
-do -- UI Logic (Giữ nguyên)
-    local p = panels["AutoFruit"]
-    local topLabel=Instance.new("TextLabel",p)
-    topLabel.Size=UDim2.new(1,0,0,26)
-    topLabel.Position=UDim2.new(0,0,0,6)
-    topLabel.BackgroundTransparency=1
-    topLabel.Font = Enum.Font.GothamBold
-    topLabel.TextSize = 14
-    topLabel.TextColor3 = Color3.fromRGB(220,220,220)
-    topLabel.Text="Auto Fruit - Master Toggle & specific fruits"
-
-    local masterBtn=Instance.new("TextButton",p)
-    masterBtn.Size=UDim2.new(0,200,0,36)
-    masterBtn.Position=UDim2.new(0,10,0,40)
-    masterBtn.Text="Auto Pick ALL: OFF"
-    masterBtn.Font = Enum.Font.GothamBold
-    masterBtn.TextSize = 14
-    masterBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    masterBtn.BackgroundColor3=Color3.fromRGB(150,50,50) 
-    masterBtn.BorderSizePixel=0
-    Instance.new("UICorner",masterBtn).CornerRadius=UDim.new(0,6)
-
-    masterBtn.MouseButton1Click:Connect(function()
-        AutoPickAllFruits=not AutoPickAllFruits
-        masterBtn.Text="Auto Pick ALL: "..(AutoPickAllFruits and "ON" or "OFF")
-        masterBtn.BackgroundColor3=AutoPickAllFruits and Color3.fromRGB(0,150,255) or Color3.fromRGB(150,50,50)
-    end)
-
-    local scroll=Instance.new("ScrollingFrame",p)
-    scroll.Size=UDim2.new(1,-20,1,-96) 
-    scroll.Position=UDim2.new(0,10,0,86) 
-    scroll.CanvasSize=UDim2.new(0,0,0,0)
-    scroll.ScrollBarThickness=6
-    scroll.BackgroundTransparency=1
-
-    local grid=Instance.new("UIGridLayout",scroll)
-    grid.CellSize=UDim2.new(0, 258, 0, 36)
-    grid.CellPadding=UDim2.new(0,8,0,8)
-    grid.SortOrder=Enum.SortOrder.LayoutOrder
-    grid.HorizontalAlignment=Enum.HorizontalAlignment.Left
-
-    for _,f in ipairs(FruitList) do
-        local b=Instance.new("TextButton")
-        b.Size=UDim2.new(0,258,0,36)
-        b.Font = Enum.Font.GothamBold
-        b.TextSize = 14
-        b.Text=f.." OFF"
-        b.BackgroundColor3=Color3.fromRGB(58,58,60)
-        b.TextColor3=Color3.fromRGB(230,230,230)
-        b.BorderSizePixel=0
-        b.Parent=scroll
-        Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)
-        local st=false
-        b.MouseButton1Click:Connect(function()
-            st=not st
-            FruitPickToggles[f]=st
-            b.Text=f..(st and " ON" or " OFF")
-            b.BackgroundColor3=st and Color3.fromRGB(0,170,255) or Color3.fromRGB(58,58,60)
-        end)
-    end
-
-    grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scroll.CanvasSize=UDim2.new(0,0,0,grid.AbsoluteContentSize.Y + 10)
-    end)
-end
-
--- HÀM NHẶT TRÁI CÂY (FIX: Remote Call với tham số Part chính)
-local function pickupFruit(tool)
-    if not tool or not player.Character then return end
-    
-    -- TÌM PART CHÍNH CHO TƯƠNG TÁC: Main hoặc Handle
-    local mainPart = tool:FindFirstChild("Main") or tool:FindFirstChild("Handle")
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    
-    if not mainPart or not hrp then return end
-
-    -- 1. Tìm Remote Event/Function "Pickup" (Nằm trong Part chính)
-    local pickupRemote = mainPart:FindFirstChild("Pickup") 
-
-    if pickupRemote and (pickupRemote:IsA("RemoteEvent") or pickupRemote:IsA("RemoteFunction")) then
-        -- 2. Teleport tới gần Part chính (luôn cần thiết)
-        pcall(function()
-            hrp.CFrame = mainPart.CFrame * CFrame.new(0, mainPart.Size.Y / 2 + 1, 0)
-        end)
-        task.wait(0.05)
-        
-        -- 3. GỌI LỆNH REMOTE VỚI THAM SỐ LÀ PART CHÍNH
-        pcall(function()
-             -- Gửi Part bị click (Main hoặc Handle) làm tham số.
-             -- THAY ĐỔI TỪ: pickupRemote:FireServer(tool) -> pickupRemote:FireServer(mainPart)
-             pickupRemote:FireServer(mainPart) 
-        end)
-    else
-        -- Dự phòng: fireclickdetector (vẫn có thể hữu ích)
-        local clickDetector = mainPart:FindFirstChildWhichIsA("ClickDetector")
-        if clickDetector then
-            pcall(function()
-                 fireclickdetector(clickDetector, 0.1) 
-            end)
-        else
-             -- Dự phòng cuối cùng: FireTouchInterest
-             for i=1, 5 do 
-                 pcall(function()
-                     firetouchinterest(hrp, mainPart, 0) 
-                     task.wait(0.01)
-                     firetouchinterest(hrp, mainPart, 1) 
-                 end)
-                 task.wait(0.02)
-             end
-        end
-    end
-end
-
--- loop pickup
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        
-        local fruitsFound = {}
-        -- Tìm kiếm Model/Tool có tên "Fruit" và có Part tương tác
-        for _,v in ipairs(workspace:GetChildren()) do
-            if (v:IsA("Tool") or v:IsA("Model")) and string.find(v.Name,"Fruit") and (v:FindFirstChild("Main") or v:FindFirstChild("Handle")) then
-                table.insert(fruitsFound, v)
-            end
-        end
-
-        for _, fruit in ipairs(fruitsFound) do
-            local shouldPick = AutoPickAllFruits
-            
-            if not shouldPick then
-                for fname, on in pairs(FruitPickToggles) do
-                    if on and string.find(fruit.Name, fname) then
-                        shouldPick = true
-                        break
-                    end
-                end
-            end
-
-            if shouldPick then
-                pcall(function() pickupFruit(fruit) end)
-                task.wait(0.2)
-            end
-        end
-    end
-end)
-
--- ChildAdded trigger (cho trái cây mới spawn)
-workspace.ChildAdded:Connect(function(child)
-    task.wait(0.06)
-    if (child:IsA("Tool") or child:IsA("Model")) and string.find(child.Name,"Fruit") and (child:FindFirstChild("Main") or child:FindFirstChild("Handle")) then
-        local shouldPick = AutoPickAllFruits
-        
-        if not shouldPick then
-            for fname, on in pairs(FruitPickToggles) do
-                if on and string.find(child.Name, fname) then
-                    shouldPick = true
-                    break
-                end
-            end
-        end
-        
-        if shouldPick then
-            pcall(function() pickupFruit(child) end)
-        end
-    end
-end)
-
--- Footer (unchanged)
+-- Footer
 local foot=Instance.new("TextLabel")
 foot.Size=UDim2.new(1,0,0,18)
 foot.Position=UDim2.new(0,0,1,-18)
@@ -445,7 +398,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub"
+foot.Text="NTBA • Fruit Hub v5.0"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v2.9 - FINAL Remote Call FIX Initialized.")
+print("NTBA Fruit Hub v5.0 - Auto Farm NPC Initialized.")
