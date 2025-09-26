@@ -1,5 +1,5 @@
--- Fruit Hub (Dark + Neon) - NTBA
--- Single file: UI + AutoFarm(ZXC/V) + AutoHaki(R) + AutoFruit + Settings
+-- Fruit Hub (Dark + Neon) - NTBA v2.2
+-- FIX: UI Conflict, AutoFruit Stability, Added Master AutoPick Toggle
 -- Compatible with Xeno
 
 local Players = game:GetService("Players")
@@ -80,8 +80,8 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 14
 CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
 CloseBtn.BorderSizePixel = 0
-CloseBtn.Parent = TitleBar
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
+CloseBtn.Parent = TitleBar
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
 -- ===== Sidebar (left) =====
@@ -116,11 +116,11 @@ end
 local tabs = {"AutoFarm","AutoFruit","AutoHaki","Settings"}
 local tabButtons, panels = {}, {}
 
--- Tính toán kích thước và vị trí cho panel nội dung (bên phải Sidebar)
-local Panel_X_Start = Sidebar_W + 10 -- Bắt đầu sau Sidebar (160) + 10px lề
-local Panel_Y_Start = 36 + 10      -- Bắt đầu sau TitleBar (36) + 10px lề
-local Panel_W = MAIN_W - Sidebar_W - 20 -- Chiều rộng Main (740) - Sidebar (160) - 20px lề trái/phải = 560
-local Panel_H = MAIN_H - 36 - 20        -- Chiều cao Main (440) - TitleBar (36) - 20px lề trên/dưới = 384
+-- Kích thước và vị trí cố định cho panel nội dung
+local Panel_X_Start = Sidebar_W + 10 
+local Panel_Y_Start = 36 + 10      
+local Panel_W = MAIN_W - Sidebar_W - 20 
+local Panel_H = MAIN_H - 36 - 20        
 
 for i,name in ipairs(tabs) do
     local btn = createSidebarButton(name)
@@ -128,8 +128,8 @@ for i,name in ipairs(tabs) do
     tabButtons[name] = btn
 
     local panel = Instance.new("Frame")
-    panel.Size = UDim2.new(0, Panel_W, 0, Panel_H) -- Kích thước cố định 560x384
-    panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start) -- Vị trí cố định (170, 46)
+    panel.Size = UDim2.new(0, Panel_W, 0, Panel_H) 
+    panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start) 
     panel.BackgroundTransparency = 1
     panel.Visible = false
     panel.Parent = Main
@@ -149,7 +149,7 @@ for name, btn in pairs(tabButtons) do
     end)
 end
 
--- ===== Drag hub =====
+-- ===== Drag hub (unchanged) =====
 do
     local dragging = false
     local dragStart, startPos
@@ -171,7 +171,7 @@ do
     end)
 end
 
--- ===== Controls (Hotkey Ctrl) =====
+-- ===== Controls (Hotkey Ctrl - unchanged) =====
 local Hotkey=Enum.KeyCode.RightControl
 local HubVisible=true
 UserInputService.InputBegan:Connect(function(input,gpe)
@@ -181,10 +181,10 @@ UserInputService.InputBegan:Connect(function(input,gpe)
     end
 end)
 
--- ===== AutoFarm (Z/X/C/V) =====
+-- ===== AutoFarm (Z/X/C/V - unchanged) =====
 local AutoSkillState={Z=false,X=false,C=false,V=false}
 do
-    local p = panels["AutoFarm"] -- Panel hiện tại
+    local p = panels["AutoFarm"] 
     local y=6
     local label=Instance.new("TextLabel",p)
     label.Size=UDim2.new(1,0,0,26)
@@ -231,10 +231,10 @@ task.spawn(function()
     end
 end)
 
--- ===== AutoHaki (R) =====
+-- ===== AutoHaki (R - unchanged) =====
 local AutoHakiState=false
 do
-    local p = panels["AutoHaki"] -- Panel hiện tại
+    local p = panels["AutoHaki"] 
     local lbl=Instance.new("TextLabel",p)
     lbl.Size=UDim2.new(1,0,0,26)
     lbl.Position=UDim2.new(0,0,0,6)
@@ -274,9 +274,11 @@ task.spawn(function()
     end
 end)
 
--- ===== AutoFruit (teleport + Touched) - Đã sửa lỗi UI Grid Layout (2 cột không chồng) =====
+-- ===== AutoFruit (teleport + Touched) - Đã thêm Master Toggle và tối ưu hóa logic nhặt =====
 local FruitList={"Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light","Hollow","Alice","Gas","Flare","Dark","Chilly","Candy","Plasma","Gravity","Vampire","Venom","Snow","Luck"}
 local FruitPickToggles={}; for _,f in ipairs(FruitList) do FruitPickToggles[f]=false end
+local AutoPickAllFruits = false -- MASTER TOGGLE
+
 do
     local p = panels["AutoFruit"]
     local topLabel=Instance.new("TextLabel",p)
@@ -286,22 +288,39 @@ do
     topLabel.Font=Enum.Font.GothamBold
     topLabel.TextSize=14
     topLabel.TextColor3=Color3.fromRGB(220,220,220)
-    topLabel.Text="Auto Fruit - toggle fruits"
+    topLabel.Text="Auto Fruit - Master Toggle & specific fruits"
+
+    -- Master Toggle Button
+    local masterBtn=Instance.new("TextButton",p)
+    masterBtn.Size=UDim2.new(0,200,0,36)
+    masterBtn.Position=UDim2.new(0,10,0,40)
+    masterBtn.Text="Auto Pick ALL: OFF"
+    masterBtn.Font=Enum.Font.GothamBold
+    masterBtn.TextSize=14
+    masterBtn.TextColor3=Color3.fromRGB(255,255,255)
+    masterBtn.BackgroundColor3=Color3.fromRGB(150,50,50) -- RED/OFF
+    masterBtn.BorderSizePixel=0
+    Instance.new("UICorner",masterBtn).CornerRadius=UDim.new(0,6)
+
+    masterBtn.MouseButton1Click:Connect(function()
+        AutoPickAllFruits=not AutoPickAllFruits
+        masterBtn.Text="Auto Pick ALL: "..(AutoPickAllFruits and "ON" or "OFF")
+        masterBtn.BackgroundColor3=AutoPickAllFruits and Color3.fromRGB(0,150,255) or Color3.fromRGB(150,50,50)
+    end)
+
 
     local scroll=Instance.new("ScrollingFrame",p)
-    scroll.Size=UDim2.new(1,-20,1,-50) -- Giữ nguyên 100% chiều rộng panel trừ lề 20px, 100% chiều cao trừ lề 50px
-    scroll.Position=UDim2.new(0,10,0,36)
+    scroll.Size=UDim2.new(1,-20,1,-96) -- Giảm chiều cao để nhường chỗ cho Master Toggle
+    scroll.Position=UDim2.new(0,10,0,86) -- Bắt đầu sau Master Toggle (40+36+10 = 86)
     scroll.CanvasSize=UDim2.new(0,0,0,0)
     scroll.ScrollBarThickness=6
     scroll.BackgroundTransparency=1
 
     local grid=Instance.new("UIGridLayout",scroll)
-    -- CellSize và CellPadding được giữ để đảm bảo 2 cột
-    local Cell_W = (Panel_W - 20) / 2 - 8 -- Panel_W (560) - 20px lề Scroll - 8px CellPadding = 532. 532/2 = 266. 266 - 8px CellPadding = 258. -> Sẽ fix lại CellSize/Padding cho đẹp 2 cột
-    grid.CellSize=UDim2.new(0, 258, 0, 36) -- Đã tính toán lại để vừa 2 cột trong 560px
+    grid.CellSize=UDim2.new(0, 258, 0, 36)
     grid.CellPadding=UDim2.new(0,8,0,8)
     grid.SortOrder=Enum.SortOrder.LayoutOrder
-    grid.HorizontalAlignment=Enum.HorizontalAlignment.Left -- Đổi sang Left để 2 cột sát lề trái
+    grid.HorizontalAlignment=Enum.HorizontalAlignment.Left
 
     for _,f in ipairs(FruitList) do
         local b=Instance.new("TextButton")
@@ -329,55 +348,84 @@ do
 end
 
 local function pickupFruit(tool)
-    if not tool then return end
+    if not tool or not player.Character then return end
     local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
-    if not handle then return end
-    local char = player.Character
-    if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if not handle or not hrp then return end
+
     pcall(function()
-        char.HumanoidRootPart.CFrame = handle.CFrame + Vector3.new(0,2,0)
+        -- Teleport chính xác lên trên Handle, cách Handle một khoảng ngắn
+        hrp.CFrame = handle.CFrame * CFrame.new(0, handle.Size.Y / 2 + 1, 0)
     end)
     task.wait(0.05)
-    -- Fire Touched
-    for i=1,10 do
+    
+    -- Lặp lại firetouchinterest nhiều lần để tăng khả năng nhặt
+    for i=1, 20 do -- Tăng số lần lặp từ 10 lên 20
         pcall(function()
-            firetouchinterest(char.HumanoidRootPart,handle,0)
-            firetouchinterest(char.HumanoidRootPart,handle,1)
+            firetouchinterest(hrp, handle, 0) -- Touch Start
+            task.wait(0.01)
+            firetouchinterest(hrp, handle, 1) -- Touch End
         end)
-        task.wait(0.05)
+        task.wait(0.02)
     end
 end
 
 -- loop pickup
 task.spawn(function()
     while true do
-        task.wait(0.12)
+        task.wait(0.1)
+        local fruitsFound = {}
+        
+        -- Tìm kiếm tất cả trái cây trên workspace
         for _,v in ipairs(workspace:GetChildren()) do
-            if (v:IsA("Tool") or v:IsA("Model")) and v:FindFirstChild("Handle") then
-                for fname,on in pairs(FruitPickToggles) do
-                    -- Sử dụng string.find(..., ..., 1, true) để tìm kiếm chính xác hơn (case sensitive, không dùng pattern)
-                    -- Tuy nhiên, để linh hoạt, mình vẫn dùng string.find mặc định.
-                    if on and string.find(v.Name,fname) and string.find(v.Name,"Fruit") then
-                        pcall(function() pickupFruit(v) end)
+            if (v:IsA("Tool") or v:IsA("Model")) and v:FindFirstChild("Handle") and string.find(v.Name,"Fruit") then
+                table.insert(fruitsFound, v)
+            end
+        end
+
+        for _, fruit in ipairs(fruitsFound) do
+            local shouldPick = AutoPickAllFruits
+            
+            if not shouldPick then
+                -- Nếu Master Toggle OFF, kiểm tra từng Fruit Toggle
+                for fname, on in pairs(FruitPickToggles) do
+                    if on and string.find(fruit.Name, fname) then
+                        shouldPick = true
+                        break
                     end
                 end
             end
-        end
-    end
-end)
 
-workspace.ChildAdded:Connect(function(child)
-    task.wait(0.06)
-    if (child:IsA("Tool") or child:IsA("Model")) and child:FindFirstChild("Handle") then
-        for fname,on in pairs(FruitPickToggles) do
-            if on and string.find(child.Name,fname) and string.find(child.Name,"Fruit") then
-                pcall(function() pickupFruit(child) end)
+            if shouldPick then
+                pcall(function() pickupFruit(fruit) end)
+                task.wait(0.2) -- Chờ một chút sau khi nhặt thành công (hoặc thất bại)
             end
         end
     end
 end)
 
--- ===== Footer =====
+-- ChildAdded trigger (cho trái cây mới spawn)
+workspace.ChildAdded:Connect(function(child)
+    task.wait(0.06)
+    if (child:IsA("Tool") or child:IsA("Model")) and child:FindFirstChild("Handle") and string.find(child.Name,"Fruit") then
+        local shouldPick = AutoPickAllFruits
+        
+        if not shouldPick then
+            for fname, on in pairs(FruitPickToggles) do
+                if on and string.find(child.Name, fname) then
+                    shouldPick = true
+                    break
+                end
+            end
+        end
+        
+        if shouldPick then
+            pcall(function() pickupFruit(child) end)
+        end
+    end
+end)
+
+-- ===== Footer (unchanged) =====
 local foot=Instance.new("TextLabel")
 foot.Size=UDim2.new(1,0,0,18)
 foot.Position=UDim2.new(0,0,1,-18)
@@ -388,4 +436,4 @@ foot.TextColor3=Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Fruit Hub"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v2.1 initialized. UI Conflict Fixed.")
+print("NTBA Fruit Hub v2.2 Initialized. Master AutoPick added & pickup stabilized.")
