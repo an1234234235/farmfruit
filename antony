@@ -1,5 +1,6 @@
--- Fruit Hub (Dark + Neon) - NTBA (Xeno-ready)
--- Single file: UI + AutoSkill + AutoHaki + AutoFruit + Settings
+-- Fruit Hub (Dark + Neon) - NTBA
+-- Single file: UI + AutoFarm(ZXC/V) + AutoHaki(R) + AutoFruit + Settings
+-- Compatible with Xeno
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -112,7 +113,7 @@ local function createSidebarButton(text)
     return b
 end
 
-local tabs = {"AutoFarm","AutoFruit","AutoHaki","AutoSkills","Settings"}
+local tabs = {"AutoFarm","AutoFruit","AutoHaki","Settings"}
 local tabButtons, panels = {}, {}
 
 for i,name in ipairs(tabs) do
@@ -173,11 +174,11 @@ UserInputService.InputBegan:Connect(function(input,gpe)
     end
 end)
 
--- ===== AutoSkill (Z/X/C/V) =====
+-- ===== AutoFarm (Z/X/C/V) =====
 local AutoSkillState={Z=false,X=false,C=false,V=false}
 do
     local y=6
-    local label=Instance.new("TextLabel",panels["AutoSkills"])
+    local label=Instance.new("TextLabel",panels["AutoFarm"])
     label.Size=UDim2.new(1,0,0,26)
     label.Position=UDim2.new(0,0,0,y)
     label.BackgroundTransparency=1
@@ -187,7 +188,7 @@ do
     label.Text="Auto Skills (spam keys)"
     y=y+30
     for i,key in ipairs({"Z","X","C","V"}) do
-        local btn=Instance.new("TextButton",panels["AutoSkills"])
+        local btn=Instance.new("TextButton",panels["AutoFarm"])
         btn.Size=UDim2.new(0,100,0,34)
         btn.Position=UDim2.new(0,10+(i-1)*110,0,y)
         btn.Text=key.." OFF"
@@ -196,7 +197,7 @@ do
         btn.TextColor3=Color3.fromRGB(230,230,230)
         btn.BackgroundColor3=Color3.fromRGB(60,60,62)
         btn.BorderSizePixel=0
-        Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
+        Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
         local state=false
         btn.MouseButton1Click:Connect(function()
             state=not state
@@ -264,94 +265,88 @@ task.spawn(function()
     end
 end)
 
--- ===== AutoFruit =====
+-- ===== AutoFruit (teleport + Touched) =====
 local FruitList={"Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light","Hollow","Alice","Gas","Flare","Dark","Chilly","Candy","Plasma","Gravity","Vampire","Venom","Snow","Luck"}
 local FruitPickToggles={}; for _,f in ipairs(FruitList) do FruitPickToggles[f]=false end
 
--- UI
 do
-    local topLabel = Instance.new("TextLabel",panels["AutoFruit"])
-    topLabel.Size = UDim2.new(1,0,0,26)
-    topLabel.Position = UDim2.new(0,0,0,6)
-    topLabel.BackgroundTransparency = 1
-    topLabel.Font = Enum.Font.GothamBold
-    topLabel.TextSize = 14
-    topLabel.TextColor3 = Color3.fromRGB(220,220,220)
-    topLabel.Text = "Auto Fruit - toggle fruits"
+    local p = panels["AutoFruit"]
+    local topLabel=Instance.new("TextLabel",p)
+    topLabel.Size=UDim2.new(1,0,0,26)
+    topLabel.Position=UDim2.new(0,0,0,6)
+    topLabel.BackgroundTransparency=1
+    topLabel.Font=Enum.Font.GothamBold
+    topLabel.TextSize=14
+    topLabel.TextColor3=Color3.fromRGB(220,220,220)
+    topLabel.Text="Auto Fruit - toggle fruits"
 
-    local scroll = Instance.new("ScrollingFrame",panels["AutoFruit"])
-    scroll.Size = UDim2.new(1,-20,1,-50)
-    scroll.Position = UDim2.new(0,10,0,36)
-    scroll.CanvasSize = UDim2.new(0,0,0,0)
-    scroll.ScrollBarThickness = 6
-    scroll.BackgroundTransparency = 1
+    local scroll=Instance.new("ScrollingFrame",p)
+    scroll.Size=UDim2.new(1,-20,1,-50)
+    scroll.Position=UDim2.new(0,10,0,36)
+    scroll.CanvasSize=UDim2.new(0,0,0,0)
+    scroll.ScrollBarThickness=6
+    scroll.BackgroundTransparency=1
 
-    local grid = Instance.new("UIGridLayout",scroll)
-    grid.CellSize = UDim2.new(0,140,0,36)
-    grid.CellPadding = UDim2.new(0,8,0,8)
-    grid.SortOrder = Enum.SortOrder.LayoutOrder
-    grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    grid.FillDirection = Enum.FillDirection.Horizontal
+    local grid=Instance.new("UIGridLayout",scroll)
+    grid.CellSize=UDim2.new(0,140,0,36)
+    grid.CellPadding=UDim2.new(0,8,0,8)
+    grid.SortOrder=Enum.SortOrder.LayoutOrder
+    grid.HorizontalAlignment=Enum.HorizontalAlignment.Center
 
     for _,f in ipairs(FruitList) do
         local b=Instance.new("TextButton")
-        b.Size = UDim2.new(0,140,0,36)
-        b.Font = Enum.Font.GothamBold
-        b.TextSize = 14
-        b.Text = f.." OFF"
-        b.BackgroundColor3 = Color3.fromRGB(58,58,60)
-        b.TextColor3 = Color3.fromRGB(230,230,230)
-        b.BorderSizePixel = 0
-        b.Parent = scroll
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
+        b.Size=UDim2.new(0,140,0,36)
+        b.Font=Enum.Font.GothamBold
+        b.TextSize=14
+        b.Text=f.." OFF"
+        b.BackgroundColor3=Color3.fromRGB(58,58,60)
+        b.TextColor3=Color3.fromRGB(230,230,230)
+        b.BorderSizePixel=0
+        b.Parent=scroll
+        Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)
         local st=false
         b.MouseButton1Click:Connect(function()
-            st = not st
-            FruitPickToggles[f] = st
-            b.Text = f..(st and " ON" or " OFF")
-            b.BackgroundColor3 = st and Color3.fromRGB(0,170,255) or Color3.fromRGB(58,58,60)
+            st=not st
+            FruitPickToggles[f]=st
+            b.Text=f..(st and " ON" or " OFF")
+            b.BackgroundColor3=st and Color3.fromRGB(0,170,255) or Color3.fromRGB(58,58,60)
         end)
     end
 
     grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scroll.CanvasSize = UDim2.new(0,0,0,grid.AbsoluteContentSize.Y + 10)
+        scroll.CanvasSize=UDim2.new(0,0,0,grid.AbsoluteContentSize.Y+10)
     end)
 end
 
--- pickup helper
-local function pickupFruit(toolModel)
-    if not toolModel then return end
-    local handle = toolModel:FindFirstChild("Handle") or toolModel:FindFirstChildWhichIsA("BasePart")
+local function pickupFruit(tool)
+    if not tool then return end
+    local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
     if not handle then return end
     local char = player.Character
     if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
-
-    -- teleport lên trên trái
     pcall(function()
-        char.HumanoidRootPart.CFrame = handle.CFrame + Vector3.new(0,3,0)
+        char.HumanoidRootPart.CFrame = handle.CFrame + Vector3.new(0,2,0)
     end)
-    task.wait(0.06)
-
-    -- nhấn liên tục
+    task.wait(0.05)
+    -- Fire Touched
     for i=1,10 do
         pcall(function()
-            firetouchinterest(char.HumanoidRootPart, handle, 0)
-            firetouchinterest(char.HumanoidRootPart, handle, 1)
+            firetouchinterest(char.HumanoidRootPart,handle,0)
+            firetouchinterest(char.HumanoidRootPart,handle,1)
         end)
-        task.wait(0.06)
+        task.wait(0.05)
     end
 end
 
--- Auto pickup loop
+-- loop pickup
 task.spawn(function()
     while true do
         task.wait(0.12)
         for _,v in ipairs(workspace:GetChildren()) do
-            if (v:IsA("Tool") or v:IsA("Model")) and v.Name and v:FindFirstChild("Handle") then
+            if (v:IsA("Tool") or v:IsA("Model")) and v:FindFirstChild("Handle") then
                 for fname,on in pairs(FruitPickToggles) do
                     if on and string.find(v.Name,fname) and string.find(v.Name,"Fruit") then
                         pcall(function() pickupFruit(v) end)
-                        task.wait(0.06)
                     end
                 end
             end
@@ -361,7 +356,7 @@ end)
 
 workspace.ChildAdded:Connect(function(child)
     task.wait(0.06)
-    if (child:IsA("Tool") or child:IsA("Model")) and child.Name and child:FindFirstChild("Handle") then
+    if (child:IsA("Tool") or child:IsA("Model")) and child:FindFirstChild("Handle") then
         for fname,on in pairs(FruitPickToggles) do
             if on and string.find(child.Name,fname) and string.find(child.Name,"Fruit") then
                 pcall(function() pickupFruit(child) end)
@@ -370,49 +365,15 @@ workspace.ChildAdded:Connect(function(child)
     end
 end)
 
--- ===== Settings =====
-do
-    local p = panels["Settings"]
-    local y=6
-    local label=Instance.new("TextLabel",p)
-    label.Size=UDim2.new(1,0,0,24)
-    label.Position=UDim2.new(0,8,0,y)
-    label.BackgroundTransparency=1
-    label.Font=Enum.Font.GothamBold
-    label.TextSize=14
-    label.TextColor3=Color3.fromRGB(220,220,220)
-    label.Text="Settings"
-    y=y+28
+-- ===== Footer =====
+local foot=Instance.new("TextLabel")
+foot.Size=UDim2.new(1,0,0,18)
+foot.Position=UDim2.new(0,0,1,-18)
+foot.BackgroundTransparency=1
+foot.Font=Enum.Font.Gotham
+foot.TextSize=11
+foot.TextColor3=Color3.fromRGB(150,150,150)
+foot.Text="NTBA • Fruit Hub"
+foot.Parent=Main
 
-    local hotLabel=Instance.new("TextLabel",p)
-    hotLabel.Size=UDim2.new(0,260,0,28)
-    hotLabel.Position=UDim2.new(0,8,0,y)
-    hotLabel.BackgroundTransparency=1
-    hotLabel.Font=Enum.Font.Gotham
-    hotLabel.TextSize=13
-    hotLabel.TextColor3=Color3.fromRGB(200,200,200)
-    hotLabel.Text="Toggle Hotkey: "..tostring(Hotkey.Name)
-    y=y+36
-
-    local changeBtn=Instance.new("TextButton",p)
-    changeBtn.Size=UDim2.new(0,120,0,30)
-    changeBtn.Position=UDim2.new(0,8,0,y)
-    changeBtn.Text="Change Hotkey"
-    changeBtn.Font=Enum.Font.GothamBold
-    changeBtn.TextSize=13
-    changeBtn.BackgroundColor3=Color3.fromRGB(60,60,62)
-    changeBtn.TextColor3=Color3.fromRGB(230,230,230)
-    changeBtn.BorderSizePixel=0
-    Instance.new("UICorner",changeBtn).CornerRadius=UDim.new(0,6)
-    changeBtn.MouseButton1Click:Connect(function()
-        hotLabel.Text="Press a key..."
-        local conn
-        conn=UserInputService.InputBegan:Connect(function(input,gpe)
-            if input.UserInputType==Enum.UserInputType.Keyboard then
-                Hotkey=input.KeyCode
-                hotLabel.Text="Toggle Hotkey: "..tostring(Hotkey.Name)
-                conn:Disconnect()
-            end
-        end)
-    end)
-end
+print("NTBA Fruit Hub v2 initialized.")
