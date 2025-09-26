@@ -1,5 +1,5 @@
--- Fruit Hub (Dark + Neon) - NTBA v2.7 - FINAL FIX (Main/ClickDetector + Distance)
--- Đã thêm tham số khoảng cách 0.1 vào fireclickdetector để khắc phục lỗi nhặt.
+-- Fruit Hub (Dark + Neon) - NTBA v2.8 - FINAL FIX (Remote Call: Pickup)
+-- Đã chuyển sang sử dụng Remote Event/Function "Pickup" bên trong trái cây.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,7 +18,7 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- ===== ScreenGui & Main Frame (UI Init) =====
+-- ===== UI & CONTROLS (Giữ nguyên từ v2.7) =====
 local MAIN_W, MAIN_H = 740, 440
 local Sidebar_W = 160
 local ScreenGui = Instance.new("ScreenGui")
@@ -40,7 +40,6 @@ shadow.Color = Color3.fromRGB(85, 170, 255)
 shadow.Thickness = 2
 shadow.Transparency = 0.6
 
--- Title Bar (UI Init)
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1,0,0,36)
 TitleBar.Position = UDim2.new(0,0,0,0)
@@ -84,7 +83,37 @@ Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- Sidebar (UI Init)
+do -- Drag hub
+    local dragging = false
+    local dragStart, startPos
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseButton1 then
+            dragging=true
+            dragStart=input.Position
+            startPos=Main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState==Enum.UserInputState.End then dragging=false end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType==Enum.UserInputType.MouseMovement then
+            local delta=input.Position - dragStart
+            Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+        end
+    end)
+end
+
+-- Controls (Hotkey Ctrl)
+local Hotkey=Enum.KeyCode.RightControl
+local HubVisible=true
+UserInputService.InputBegan:Connect(function(input,gpe)
+    if not gpe and input.KeyCode==Hotkey then
+        HubVisible=not HubVisible
+        ScreenGui.Enabled=HubVisible
+    end
+end)
+
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0,Sidebar_W,1,-36)
 Sidebar.Position = UDim2.new(0,0,0,36)
@@ -99,20 +128,6 @@ SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
-local function createSidebarButton(text)
-    local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1,-20,0,36)
-    b.BackgroundColor3 = Color3.fromRGB(44,44,46)
-    b.BorderSizePixel = 0
-    b.Font = Enum.Font.GothamBold
-    b.TextSize = 14
-    b.TextColor3 = Color3.fromRGB(220,220,220)
-    b.Text = text
-    b.Parent = Sidebar
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
-    return b
-end
-
 local tabs = {"AutoFarm","AutoFruit","AutoHaki","Settings"}
 local tabButtons, panels = {}, {}
 
@@ -122,7 +137,16 @@ local Panel_W = MAIN_W - Sidebar_W - 20
 local Panel_H = MAIN_H - 36 - 20        
 
 for i,name in ipairs(tabs) do
-    local btn = createSidebarButton(name)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,-20,0,36)
+    btn.BackgroundColor3 = Color3.fromRGB(44,44,46)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.TextColor3 = Color3.fromRGB(220,220,220)
+    btn.Text = name
+    btn.Parent = Sidebar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
     btn.LayoutOrder = i
     tabButtons[name] = btn
 
@@ -147,38 +171,6 @@ for name, btn in pairs(tabButtons) do
         panels[name].Visible = true
     end)
 end
-
--- Drag hub (unchanged)
-do
-    local dragging = false
-    local dragStart, startPos
-    TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.MouseButton1 then
-            dragging=true
-            dragStart=input.Position
-            startPos=Main.Position
-            input.Changed:Connect(function()
-                if input.UserInputState==Enum.UserInputState.End then dragging=false end
-            end)
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType==Enum.UserInputType.MouseMovement then
-            local delta=input.Position - dragStart
-            Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
-        end
-    end)
-end
-
--- Controls (Hotkey Ctrl - unchanged)
-local Hotkey=Enum.KeyCode.RightControl
-local HubVisible=true
-UserInputService.InputBegan:Connect(function(input,gpe)
-    if not gpe and input.KeyCode==Hotkey then
-        HubVisible=not HubVisible
-        ScreenGui.Enabled=HubVisible
-    end
-end)
 
 -- AutoFarm (Z/X/C/V - unchanged)
 local AutoSkillState={Z=false,X=false,C=false,V=false}
@@ -273,12 +265,12 @@ task.spawn(function()
     end
 end)
 
--- ===== AutoFruit (Final ClickDetector Logic) =====
+-- ===== AutoFruit (Remote Call Logic) =====
 local FruitList={"Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light","Hollow","Alice","Gas","Flare","Dark","Chilly","Candy","Plasma","Gravity","Vampire","Venom","Snow","Luck"}
 local FruitPickToggles={}; for _,f in ipairs(FruitList) do FruitPickToggles[f]=false end
 local AutoPickAllFruits = false -- MASTER TOGGLE
 
-do
+do -- UI Logic (Giữ nguyên)
     local p = panels["AutoFruit"]
     local topLabel=Instance.new("TextLabel",p)
     topLabel.Size=UDim2.new(1,0,0,26)
@@ -289,7 +281,6 @@ do
     topLabel.TextColor3 = Color3.fromRGB(220,220,220)
     topLabel.Text="Auto Fruit - Master Toggle & specific fruits"
 
-    -- Master Toggle Button
     local masterBtn=Instance.new("TextButton",p)
     masterBtn.Size=UDim2.new(0,200,0,36)
     masterBtn.Position=UDim2.new(0,10,0,40)
@@ -297,7 +288,7 @@ do
     masterBtn.Font = Enum.Font.GothamBold
     masterBtn.TextSize = 14
     masterBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    masterBtn.BackgroundColor3=Color3.fromRGB(150,50,50) -- RED/OFF
+    masterBtn.BackgroundColor3=Color3.fromRGB(150,50,50) 
     masterBtn.BorderSizePixel=0
     Instance.new("UICorner",masterBtn).CornerRadius=UDim.new(0,6)
 
@@ -345,37 +336,33 @@ do
     end)
 end
 
--- Hàm nhặt trái cây sử dụng ClickDetector đã được tối ưu hóa VỚI THAM SỐ KHOẢNG CÁCH
+-- HÀM NHẶT TRÁI CÂY (SỬ DỤNG REMOTE FUNCTION "Pickup")
 local function pickupFruit(tool)
     if not tool or not player.Character then return end
     
-    -- TÌM PART CHÍNH CHO TƯƠNG TÁC: Dùng Part "Main" hoặc Handle
-    local mainPart = tool:FindFirstChild("Main") 
+    -- TÌM PART CHÍNH CHO TƯƠNG TÁC: Main hoặc Handle
+    local mainPart = tool:FindFirstChild("Main") or tool:FindFirstChild("Handle")
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
     
-    if not mainPart or not hrp then 
-        mainPart = tool:FindFirstChild("Handle")
-        if not mainPart then return end
-    end
+    if not mainPart or not hrp then return end
 
-    -- 1. Tìm ClickDetector bên trong Part chính
-    local clickDetector = mainPart:FindFirstChildWhichIsA("ClickDetector")
+    -- 1. Tìm Remote Event/Function "Pickup"
+    local pickupRemote = mainPart:FindFirstChild("Pickup") 
 
-    if clickDetector then
-        -- 2. Teleport tới gần Part chính
+    if pickupRemote and (pickupRemote:IsA("RemoteEvent") or pickupRemote:IsA("RemoteFunction")) then
+        -- 2. Teleport tới gần Part chính (luôn cần thiết)
         pcall(function()
-            -- Teleport cực kỳ gần
             hrp.CFrame = mainPart.CFrame * CFrame.new(0, mainPart.Size.Y / 2 + 1, 0)
         end)
         task.wait(0.05)
         
-        -- 3. GỌI LỆNH CLICK VỚI THAM SỐ KHOẢNG CÁCH
+        -- 3. GỌI LỆNH REMOTE (Hiệu quả nhất)
         pcall(function()
-             -- Tham số 0.1 mô phỏng khoảng cách click chuột, rất quan trọng!
-             fireclickdetector(clickDetector, 0.1) 
+             -- Gửi đối tượng trái cây (tool/model) làm tham số
+             pickupRemote:FireServer(tool) 
         end)
     else
-        -- DÙNG FIRETOUCHINTEREST làm dự phòng
+        -- Dự phòng: Sử dụng firetouchinterest nếu không tìm thấy Remote "Pickup"
         for i=1, 5 do 
             pcall(function()
                 firetouchinterest(hrp, mainPart, 0) 
@@ -393,7 +380,7 @@ task.spawn(function()
         task.wait(0.1)
         
         local fruitsFound = {}
-        -- Tìm kiếm Model/Tool có tên "Fruit" và có Part "Main" hoặc "Handle"
+        -- Tìm kiếm Model/Tool có tên "Fruit" và có Part tương tác
         for _,v in ipairs(workspace:GetChildren()) do
             if (v:IsA("Tool") or v:IsA("Model")) and string.find(v.Name,"Fruit") and (v:FindFirstChild("Main") or v:FindFirstChild("Handle")) then
                 table.insert(fruitsFound, v)
@@ -452,4 +439,4 @@ foot.TextColor3 = Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Fruit Hub"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v2.7 - FINAL FIX Initialized.")
+print("NTBA Fruit Hub v2.8 - Remote Call FIX Initialized.")
