@@ -1,5 +1,5 @@
--- Fruit Hub (Dark + Neon) - NTBA v2.6 - FINAL FIX (Main/ClickDetector)
--- Sử dụng fireclickdetector để nhặt trái cây, đã tối ưu hóa cho cấu trúc "Main" Part.
+-- Fruit Hub (Dark + Neon) - NTBA v2.7 - FINAL FIX (Main/ClickDetector + Distance)
+-- Đã thêm tham số khoảng cách 0.1 vào fireclickdetector để khắc phục lỗi nhặt.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -68,7 +68,7 @@ AuthorLabel.Font = Enum.Font.Gotham
 AuthorLabel.Text = "Author: NTBA"
 AuthorLabel.TextSize = 13
 AuthorLabel.TextColor3 = Color3.fromRGB(160,160,160)
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Right
+AuthorLabel.TextXAlignment = Enum.TextXAlignment.Right
 AuthorLabel.Parent = TitleBar
 
 local CloseBtn = Instance.new("TextButton")
@@ -345,16 +345,15 @@ do
     end)
 end
 
--- Hàm nhặt trái cây sử dụng ClickDetector đã được tối ưu hóa
+-- Hàm nhặt trái cây sử dụng ClickDetector đã được tối ưu hóa VỚI THAM SỐ KHOẢNG CÁCH
 local function pickupFruit(tool)
     if not tool or not player.Character then return end
     
-    -- TÌM PART CHÍNH CHO TƯƠNG TÁC: Dùng Part "Main"
+    -- TÌM PART CHÍNH CHO TƯƠNG TÁC: Dùng Part "Main" hoặc Handle
     local mainPart = tool:FindFirstChild("Main") 
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
     
     if not mainPart or not hrp then 
-        -- Nếu không tìm thấy Main, thử tìm Handle mặc định làm dự phòng
         mainPart = tool:FindFirstChild("Handle")
         if not mainPart then return end
     end
@@ -365,16 +364,18 @@ local function pickupFruit(tool)
     if clickDetector then
         -- 2. Teleport tới gần Part chính
         pcall(function()
+            -- Teleport cực kỳ gần
             hrp.CFrame = mainPart.CFrame * CFrame.new(0, mainPart.Size.Y / 2 + 1, 0)
         end)
         task.wait(0.05)
         
-        -- 3. GỌI LỆNH CLICK
+        -- 3. GỌI LỆNH CLICK VỚI THAM SỐ KHOẢNG CÁCH
         pcall(function()
-             fireclickdetector(clickDetector)
+             -- Tham số 0.1 mô phỏng khoảng cách click chuột, rất quan trọng!
+             fireclickdetector(clickDetector, 0.1) 
         end)
     else
-        -- DÙNG FIRETOUCHINTEREST làm dự phòng (rất hiếm khi hoạt động, nhưng an toàn)
+        -- DÙNG FIRETOUCHINTEREST làm dự phòng
         for i=1, 5 do 
             pcall(function()
                 firetouchinterest(hrp, mainPart, 0) 
@@ -451,4 +452,4 @@ foot.TextColor3 = Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Fruit Hub"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v2.6 - ClickDetector FINAL FIX Initialized.")
+print("NTBA Fruit Hub v2.7 - FINAL FIX Initialized.")
