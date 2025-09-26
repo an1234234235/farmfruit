@@ -1,8 +1,7 @@
--- Fruit Hub (full) - NTBA
--- Single-file: UI (sidebar) + AutoSkill + AutoHaki + AutoFruit + Settings
--- Compatible with Xeno (uses string keys for SendKeyEvent, robust pickup attempts)
+-- Fruit Hub (Dark + Neon) - NTBA
+-- Single file: UI + AutoSkill + AutoHaki + AutoFruit + Settings
+-- Compatible with Xeno
 
--- ====== Setup & cleanup ======
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -11,64 +10,70 @@ local TeleportService = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 
--- remove old
+-- Remove old UI
 pcall(function()
     if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
         player.PlayerGui.FruitHubUI:Destroy()
     end
 end)
 
--- ====== Main ScreenGui & layout ======
+-- ===== ScreenGui =====
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FruitHubUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
-local MAIN_W, MAIN_H = 720, 420
+-- ===== Main Frame =====
+local MAIN_W, MAIN_H = 740, 440
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
 Main.Position = UDim2.new(0.5, -MAIN_W/2, 0.12, 0)
-Main.BackgroundColor3 = Color3.fromRGB(28,28,30)
+Main.BackgroundColor3 = Color3.fromRGB(24,24,28)
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0,12)
 
--- Title bar (drag here)
+-- Shadow / Neon effect
+local shadow = Instance.new("UIStroke", Main)
+shadow.Color = Color3.fromRGB(85, 170, 255)
+shadow.Thickness = 2
+shadow.Transparency = 0.6
+
+-- ===== Title Bar =====
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 36)
-TitleBar.Position = UDim2.new(0, 0, 0, 0)
-TitleBar.BackgroundColor3 = Color3.fromRGB(38,38,40)
+TitleBar.Size = UDim2.new(1,0,0,36)
+TitleBar.Position = UDim2.new(0,0,0,0)
+TitleBar.BackgroundColor3 = Color3.fromRGB(32,32,36)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0,12)
 
 local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(0.6, -10, 1, 0)
-TitleLabel.Position = UDim2.new(0, 12, 0, 0)
+TitleLabel.Size = UDim2.new(0.6,-10,1,0)
+TitleLabel.Position = UDim2.new(0,12,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Text = "NTBA • Fruit Hub"
 TitleLabel.TextSize = 16
-TitleLabel.TextColor3 = Color3.fromRGB(230,230,230)
+TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleBar
 
 local AuthorLabel = Instance.new("TextLabel")
-AuthorLabel.Size = UDim2.new(0.3, -10, 1, 0)
-AuthorLabel.Position = UDim2.new(0.7, 10, 0, 0)
+AuthorLabel.Size = UDim2.new(0.3,-10,1,0)
+AuthorLabel.Position = UDim2.new(0.7,10,0,0)
 AuthorLabel.BackgroundTransparency = 1
 AuthorLabel.Font = Enum.Font.Gotham
 AuthorLabel.Text = "Author: NTBA"
 AuthorLabel.TextSize = 13
-AuthorLabel.TextColor3 = Color3.fromRGB(180,180,180)
+AuthorLabel.TextColor3 = Color3.fromRGB(160,160,160)
 AuthorLabel.TextXAlignment = Enum.TextXAlignment.Right
 AuthorLabel.Parent = TitleBar
 
--- Close button
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0,36,0,28)
-CloseBtn.Position = UDim2.new(1, -44, 0, 4)
+CloseBtn.Position = UDim2.new(1,-44,0,4)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(180,60,60)
 CloseBtn.Text = "X"
 CloseBtn.Font = Enum.Font.GothamBold
@@ -79,23 +84,15 @@ CloseBtn.Parent = TitleBar
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
--- Sidebar (left)
+-- ===== Sidebar (left) =====
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 160, 1, -36)
-Sidebar.Position = UDim2.new(0, 0, 0, 36)
+Sidebar.Size = UDim2.new(0,160,1,-36)
+Sidebar.Position = UDim2.new(0,0,0,36)
 Sidebar.BackgroundColor3 = Color3.fromRGB(36,36,38)
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
-Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
--- Main panel (right)
-local Panel = Instance.new("Frame")
-Panel.Size = UDim2.new(1, -160, 1, -36)
-Panel.Position = UDim2.new(0, 160, 0, 36)
-Panel.BackgroundTransparency = 1
-Panel.Parent = Main
-
--- Sidebar buttons/layout
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
 SidebarLayout.Padding = UDim.new(0,8)
 SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -104,7 +101,7 @@ SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
 local function createSidebarButton(text)
     local b = Instance.new("TextButton")
-    b.Size = UDim2.new(1, -20, 0, 36)
+    b.Size = UDim2.new(1,-20,0,36)
     b.BackgroundColor3 = Color3.fromRGB(44,44,46)
     b.BorderSizePixel = 0
     b.Font = Enum.Font.GothamBold
@@ -116,159 +113,142 @@ local function createSidebarButton(text)
     return b
 end
 
-local tabs = {"AutoFarm", "AutoFruit", "AutoHaki", "AutoSkills", "Settings"}
-local tabButtons = {}
-for i, name in ipairs(tabs) do
+local tabs = {"AutoFarm","AutoFruit","AutoHaki","AutoSkills","Settings"}
+local tabButtons, panels = {}, {}
+
+for i,name in ipairs(tabs) do
     local btn = createSidebarButton(name)
     btn.LayoutOrder = i
     tabButtons[name] = btn
-end
 
--- Panels for each tab
-local panels = {}
-for _, name in ipairs(tabs) do
-    local f = Instance.new("Frame")
-    f.Size = UDim2.new(1, -10, 1, -20)
-    f.Position = UDim2.new(0, 10, 0, 10)
-    f.BackgroundTransparency = 1
-    f.Visible = false
-    f.Parent = Panel
-    panels[name] = f
+    local panel = Instance.new("Frame")
+    panel.Size = UDim2.new(1,-10,1,-20)
+    panel.Position = UDim2.new(0,10,0,10)
+    panel.BackgroundTransparency = 1
+    panel.Visible = false
+    panel.Parent = Main
+    panels[name] = panel
 end
 panels["AutoFarm"].Visible = true
 tabButtons["AutoFarm"].BackgroundColor3 = Color3.fromRGB(60,60,62)
 
--- tab switching
+-- tab switch
 for name, btn in pairs(tabButtons) do
     btn.MouseButton1Click:Connect(function()
-        for k, v in pairs(tabButtons) do
-            v.BackgroundColor3 = Color3.fromRGB(44,44,46)
-        end
-        for _, p in pairs(panels) do p.Visible = false end
+        for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46) end
+        for _,p in pairs(panels) do p.Visible = false end
         btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
         panels[name].Visible = true
     end)
 end
 
--- Dragging whole hub via TitleBar
+-- ===== Drag hub =====
 do
     local dragging = false
-    local dragStart = nil
-    local startPos = nil
+    local dragStart, startPos
     TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = Main.Position
+        if input.UserInputType==Enum.UserInputType.MouseButton1 then
+            dragging=true
+            dragStart=input.Position
+            startPos=Main.Position
             input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
+                if input.UserInputState==Enum.UserInputState.End then dragging=false end
             end)
         end
     end)
-    TitleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        if dragging and input.UserInputType==Enum.UserInputType.MouseMovement then
+            local delta=input.Position - dragStart
+            Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
         end
     end)
 end
 
--- ====== Controls & state ======
-local Hotkey = Enum.KeyCode.RightControl -- default
-local HubVisible = true
-
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Hotkey then
-        HubVisible = not HubVisible
-        ScreenGui.Enabled = HubVisible
+-- ===== Controls =====
+local Hotkey=Enum.KeyCode.RightControl
+local HubVisible=true
+UserInputService.InputBegan:Connect(function(input,gpe)
+    if not gpe and input.KeyCode==Hotkey then
+        HubVisible=not HubVisible
+        ScreenGui.Enabled=HubVisible
     end
 end)
 
--- ====== AutoSkill (Z/X/C/V) ======
-local AutoSkillState = {Z=false, X=false, C=false, V=false}
--- UI: put toggles in AutoSkills panel
+-- ===== AutoSkill (Z/X/C/V) =====
+local AutoSkillState={Z=false,X=false,C=false,V=false}
 do
-    local y = 6
-    local label = Instance.new("TextLabel", panels["AutoSkills"])
-    label.Size = UDim2.new(1,0,0,26)
-    label.Position = UDim2.new(0,0,0,y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(220,220,220)
-    label.Text = "Auto Skills (spam keys)"
-    y = y + 30
-
-    for i, key in ipairs({"Z","X","C","V"}) do
-        local btn = Instance.new("TextButton", panels["AutoSkills"])
-        btn.Size = UDim2.new(0,100,0,34)
-        btn.Position = UDim2.new(0, 10 + (i-1)*110, 0, y)
-        btn.Text = key .. " OFF"
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 14
-        btn.TextColor3 = Color3.fromRGB(230,230,230)
-        btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-        btn.BorderSizePixel = 0
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
-        local state = false
+    local y=6
+    local label=Instance.new("TextLabel",panels["AutoSkills"])
+    label.Size=UDim2.new(1,0,0,26)
+    label.Position=UDim2.new(0,0,0,y)
+    label.BackgroundTransparency=1
+    label.Font=Enum.Font.GothamBold
+    label.TextSize=14
+    label.TextColor3=Color3.fromRGB(220,220,220)
+    label.Text="Auto Skills (spam keys)"
+    y=y+30
+    for i,key in ipairs({"Z","X","C","V"}) do
+        local btn=Instance.new("TextButton",panels["AutoSkills"])
+        btn.Size=UDim2.new(0,100,0,34)
+        btn.Position=UDim2.new(0,10+(i-1)*110,0,y)
+        btn.Text=key.." OFF"
+        btn.Font=Enum.Font.GothamBold
+        btn.TextSize=14
+        btn.TextColor3=Color3.fromRGB(230,230,230)
+        btn.BackgroundColor3=Color3.fromRGB(60,60,62)
+        btn.BorderSizePixel=0
+        Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
+        local state=false
         btn.MouseButton1Click:Connect(function()
-            state = not state
-            AutoSkillState[key] = state
-            btn.Text = key .. (state and " ON" or " OFF")
-            btn.BackgroundColor3 = state and Color3.fromRGB(0,150,255) or Color3.fromRGB(60,60,62)
+            state=not state
+            AutoSkillState[key]=state
+            btn.Text=key..(state and " ON" or " OFF")
+            btn.BackgroundColor3=state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
         end)
     end
 end
 
--- spam loop for skills (uses string keys)
 task.spawn(function()
     while true do
         task.wait(0.18)
-        for key, enabled in pairs(AutoSkillState) do
+        for key,enabled in pairs(AutoSkillState) do
             if enabled then
                 pcall(function()
-                    VirtualInputManager:SendKeyEvent(true, key, false, game)
+                    VirtualInputManager:SendKeyEvent(true,key,false,game)
                     task.wait(0.04)
-                    VirtualInputManager:SendKeyEvent(false, key, false, game)
+                    VirtualInputManager:SendKeyEvent(false,key,false,game)
                 end)
             end
         end
     end
 end)
 
--- ====== AutoHaki (R) ======
-local AutoHakiState = false
+-- ===== AutoHaki (R) =====
+local AutoHakiState=false
 do
-    local lbl = Instance.new("TextLabel", panels["AutoHaki"])
-    lbl.Size = UDim2.new(1,0,0,26)
-    lbl.Position = UDim2.new(0,0,0,6)
-    lbl.BackgroundTransparency = 1
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 14
-    lbl.TextColor3 = Color3.fromRGB(220,220,220)
-    lbl.Text = "Auto Haki (spam R)"
+    local lbl=Instance.new("TextLabel",panels["AutoHaki"])
+    lbl.Size=UDim2.new(1,0,0,26)
+    lbl.Position=UDim2.new(0,0,0,6)
+    lbl.BackgroundTransparency=1
+    lbl.Font=Enum.Font.GothamBold
+    lbl.TextSize=14
+    lbl.TextColor3=Color3.fromRGB(220,220,220)
+    lbl.Text="Auto Haki (spam R)"
 
-    local btn = Instance.new("TextButton", panels["AutoHaki"])
-    btn.Size = UDim2.new(0,140,0,36)
-    btn.Position = UDim2.new(0,10,0,40)
-    btn.Text = "R OFF"
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.fromRGB(230,230,230)
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+    local btn=Instance.new("TextButton",panels["AutoHaki"])
+    btn.Size=UDim2.new(0,140,0,36)
+    btn.Position=UDim2.new(0,10,0,40)
+    btn.Text="R OFF"
+    btn.Font=Enum.Font.GothamBold
+    btn.TextSize=14
+    btn.TextColor3=Color3.fromRGB(230,230,230)
+    btn.BackgroundColor3=Color3.fromRGB(60,60,62)
+    btn.BorderSizePixel=0
+    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
     btn.MouseButton1Click:Connect(function()
-        AutoHakiState = not AutoHakiState
-        btn.Text = "R " .. (AutoHakiState and "ON" or "OFF")
-        btn.BackgroundColor3 = AutoHakiState and Color3.fromRGB(0,150,255) or Color3.fromRGB(60,60,62)
+        AutoHakiState=not AutoHakiState
+        btn.Text="R "..(AutoHakiState and "ON" or "OFF")
+        btn.BackgroundColor3=AutoHakiState and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
     end)
 end
 
@@ -276,137 +256,100 @@ task.spawn(function()
     while true do
         if AutoHakiState then
             pcall(function()
-                VirtualInputManager:SendKeyEvent(true, "R", false, game)
+                VirtualInputManager:SendKeyEvent(true,"R",false,game)
                 task.wait(0.06)
-                VirtualInputManager:SendKeyEvent(false, "R", false, game)
+                VirtualInputManager:SendKeyEvent(false,"R",false,game)
             end)
         end
-        task.wait(6.5) -- spacing to avoid spamming too fast
+        task.wait(6.5)
     end
 end)
 
--- ====== AutoFruit (tele + click) ======
-local FruitList = {
-    "Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light",
-    "Hollow","Alice","Gas","Flare","Dark","Chilly","Candy",
-    "Plasma","Gravity","Vampire","Venom","Snow","Luck"
-}
-local FruitPickToggles = {}
-for _, name in ipairs(FruitList) do FruitPickToggles[name] = false end
+-- ===== AutoFruit =====
+local FruitList={"Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light","Hollow","Alice","Gas","Flare","Dark","Chilly","Candy","Plasma","Gravity","Vampire","Venom","Snow","Luck"}
+local FruitPickToggles={}
+for _,f in ipairs(FruitList) do FruitPickToggles[f]=false end
 
--- UI for AutoFruit: scrolling grid 2-col
+-- UI
 do
-    local topLabel = Instance.new("TextLabel", panels["AutoFruit"])
-    topLabel.Size = UDim2.new(1,0,0,26)
-    topLabel.Position = UDim2.new(0,0,0,6)
-    topLabel.BackgroundTransparency = 1
-    topLabel.Font = Enum.Font.GothamBold
-    topLabel.TextSize = 14
-    topLabel.TextColor3 = Color3.fromRGB(220,220,220)
-    topLabel.Text = "Auto Fruit - toggle individual fruits"
+    local topLabel=Instance.new("TextLabel",panels["AutoFruit"])
+    topLabel.Size=UDim2.new(1,0,0,26)
+    topLabel.Position=UDim2.new(0,0,0,6)
+    topLabel.BackgroundTransparency=1
+    topLabel.Font=Enum.Font.GothamBold
+    topLabel.TextSize=14
+    topLabel.TextColor3=Color3.fromRGB(220,220,220)
+    topLabel.Text="Auto Fruit - toggle fruits"
 
-    local scroll = Instance.new("ScrollingFrame", panels["AutoFruit"])
-    scroll.Size = UDim2.new(1, -20, 1, -50)
-    scroll.Position = UDim2.new(0, 10, 0, 36)
-    scroll.CanvasSize = UDim2.new(0,0,0,0)
-    scroll.ScrollBarThickness = 6
-    scroll.BackgroundTransparency = 1
+    local scroll=Instance.new("ScrollingFrame",panels["AutoFruit"])
+    scroll.Size=UDim2.new(1,-20,1,-50)
+    scroll.Position=UDim2.new(0,10,0,36)
+    scroll.CanvasSize=UDim2.new(0,0,0,0)
+    scroll.ScrollBarThickness=6
+    scroll.BackgroundTransparency=1
 
-    local grid = Instance.new("UIGridLayout", scroll)
-    grid.CellSize = UDim2.new(0, 140, 0, 36)
-    grid.CellPadding = UDim2.new(0,8,0,8)
-    grid.SortOrder = Enum.SortOrder.LayoutOrder
-    grid.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    local grid=Instance.new("UIGridLayout",scroll)
+    grid.CellSize=UDim2.new(0,140,0,36)
+    grid.CellPadding=UDim2.new(0,8,0,8)
+    grid.SortOrder=Enum.SortOrder.LayoutOrder
+    grid.HorizontalAlignment=Enum.HorizontalAlignment.Left
 
-    for i, f in ipairs(FruitList) do
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(0, 140, 0, 36)
-        b.Font = Enum.Font.GothamBold
-        b.TextSize = 14
-        b.Text = f .. "  OFF"
-        b.BackgroundColor3 = Color3.fromRGB(58,58,60)
-        b.TextColor3 = Color3.fromRGB(230,230,230)
-        b.BorderSizePixel = 0
-        b.Parent = scroll
-        Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
-
-        FruitPickToggles[f] = false
-        local st = false
+    for i,f in ipairs(FruitList) do
+        local b=Instance.new("TextButton")
+        b.Size=UDim2.new(0,140,0,36)
+        b.Font=Enum.Font.GothamBold
+        b.TextSize=14
+        b.Text=f.." OFF"
+        b.BackgroundColor3=Color3.fromRGB(58,58,60)
+        b.TextColor3=Color3.fromRGB(230,230,230)
+        b.BorderSizePixel=0
+        b.Parent=scroll
+        Instance.new("UICorner",b).CornerRadius=UDim.new(0,6)
+        local st=false
         b.MouseButton1Click:Connect(function()
-            st = not st
-            FruitPickToggles[f] = st
-            b.Text = f .. (st and "  ON" or "  OFF")
-            b.BackgroundColor3 = st and Color3.fromRGB(0,150,255) or Color3.fromRGB(58,58,60)
+            st=not st
+            FruitPickToggles[f]=st
+            b.Text=f..(st and " ON" or " OFF")
+            b.BackgroundColor3=st and Color3.fromRGB(0,170,255) or Color3.fromRGB(58,58,60)
         end)
     end
 
     grid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        scroll.CanvasSize = UDim2.new(0, 0, 0, grid.AbsoluteContentSize.Y + 10)
+        scroll.CanvasSize=UDim2.new(0,0,0,grid.AbsoluteContentSize.Y+10)
     end)
 end
 
--- pickup helper: teleport close + multiple pickup attempts (click detector / proximity / touch / VirtualUser)
+-- pickup helper
 local function pickupAttempts(toolModel)
     if not toolModel then return end
-    local handle = toolModel:FindFirstChild("Handle") or toolModel:FindFirstChildWhichIsA("BasePart")
+    local handle=toolModel:FindFirstChild("Handle") or toolModel:FindFirstChildWhichIsA("BasePart")
     if not handle then return end
-    local char = player.Character
-    if not (char and char:FindFirstChild("HumanoidRootPart")) then return end
-
-    -- teleport close
-    pcall(function()
-        char.HumanoidRootPart.CFrame = handle.CFrame + Vector3.new(0,2,0)
-    end)
-    task.wait(0.08) -- tiny wait to let server register position
-
-    -- run repeated attempts for short time
-    for i = 1, 10 do
-        -- clickdetector
-        local cd = handle:FindFirstChildOfClass("ClickDetector")
-        if cd then
-            pcall(function() fireclickdetector(cd) end)
-        end
-
-        -- proximity prompt
-        local pp = handle:FindFirstChildWhichIsA("ProximityPrompt")
-        if pp then
-            pcall(function() fireproximityprompt(pp) end)
-        end
-
-        -- touch fallback
+    local char=player.Character
+    if not(char and char:FindFirstChild("HumanoidRootPart")) then return end
+    pcall(function() char.HumanoidRootPart.CFrame=handle.CFrame+Vector3.new(0,2,0) end)
+    task.wait(0.08)
+    for i=1,10 do
+        local cd=handle:FindFirstChildOfClass("ClickDetector")
+        if cd then pcall(function() fireclickdetector(cd) end) end
+        local pp=handle:FindFirstChildWhichIsA("ProximityPrompt")
+        if pp then pcall(function() fireproximityprompt(pp) end) end
+        pcall(function() firetouchinterest(char.HumanoidRootPart,handle,0);firetouchinterest(char.HumanoidRootPart,handle,1) end)
         pcall(function()
-            firetouchinterest(char.HumanoidRootPart, handle, 0)
-            firetouchinterest(char.HumanoidRootPart, handle, 1)
+            local vu=game:GetService("VirtualUser")
+            if vu.Button1Down then vu:Button1Down(Vector2.new()) end
+            if vu.Button1Up then vu:Button1Up(Vector2.new()) end
         end)
-
-        -- VirtualUser click fallback (some exploits have this)
-        pcall(function()
-            if game:GetService("VirtualUser") and game:GetService("VirtualUser").ClickButton1 then
-                game:GetService("VirtualUser"):ClickButton1(Vector2.new())
-            else
-                -- older style
-                pcall(function()
-                    local vu = game:GetService("VirtualUser")
-                    if vu.Button1Down then vu:Button1Down(Vector2.new()) end
-                    if vu.Button1Up then vu:Button1Up(Vector2.new()) end
-                end)
-            end
-        end)
-
         task.wait(0.08)
     end
 end
 
--- fast scanning loop + immediate ChildAdded reaction
 task.spawn(function()
     while true do
         task.wait(0.12)
-        -- scan existing
-        for _, v in ipairs(workspace:GetChildren()) do
-            -- some games put fruit as Tool or Model; check both
+        for _,v in ipairs(workspace:GetChildren()) do
             if (v:IsA("Tool") or v:IsA("Model")) and v.Name and v:FindFirstChild("Handle") then
-                for fname, on in pairs(FruitPickToggles) do
-                    if on and string.find(v.Name, fname) and string.find(v.Name, "Fruit") then
+                for fname,on in pairs(FruitPickToggles) do
+                    if on and string.find(v.Name,fname) and string.find(v.Name,"Fruit") then
                         pcall(function() pickupAttempts(v) end)
                         task.wait(0.06)
                     end
@@ -419,104 +362,32 @@ end)
 workspace.ChildAdded:Connect(function(child)
     task.wait(0.06)
     if (child:IsA("Tool") or child:IsA("Model")) and child.Name and child:FindFirstChild("Handle") then
-        for fname, on in pairs(FruitPickToggles) do
-            if on and string.find(child.Name, fname) and string.find(child.Name, "Fruit") then
+        for fname,on in pairs(FruitPickToggles) do
+            if on and string.find(child.Name,fname) and string.find(child.Name,"Fruit") then
                 pcall(function() pickupAttempts(child) end)
             end
         end
     end
 end)
 
--- ====== Settings panel UI ======
+-- ===== Settings =====
 do
-    local p = panels["Settings"]
-    local y = 6
+    local p=panels["Settings"]
+    local y=6
+    local label=Instance.new("TextLabel",p)
+    label.Size=UDim2.new(1,0,0,24)
+    label.Position=UDim2.new(0,8,0,y)
+    label.BackgroundTransparency=1
+    label.Font=Enum.Font.GothamBold
+    label.TextSize=14
+    label.TextColor3=Color3.fromRGB(220,220,220)
+    label.Text="Settings"
+    y=y+28
 
-    local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1,0,0,24)
-    label.Position = UDim2.new(0,8,0,y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(220,220,220)
-    label.Text = "Settings"
-    y = y + 28
-
-    -- Hotkey display + change button
-    local hotLabel = Instance.new("TextLabel", p)
-    hotLabel.Size = UDim2.new(0,260,0,28)
-    hotLabel.Position = UDim2.new(0,8,0,y)
-    hotLabel.BackgroundTransparency = 1
-    hotLabel.Font = Enum.Font.Gotham
-    hotLabel.TextSize = 13
-    hotLabel.TextColor3 = Color3.fromRGB(200,200,200)
-    hotLabel.Text = "Toggle Hotkey: "..tostring(Hotkey.Name)
-    y = y + 36
-
-    local changeBtn = Instance.new("TextButton", p)
-    changeBtn.Size = UDim2.new(0,120,0,30)
-    changeBtn.Position = UDim2.new(0,8,0,y)
-    changeBtn.Text = "Change Hotkey"
-    changeBtn.Font = Enum.Font.GothamBold
-    changeBtn.TextSize = 13
-    changeBtn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-    changeBtn.TextColor3 = Color3.fromRGB(230,230,230)
-    changeBtn.BorderSizePixel = 0
-    Instance.new("UICorner", changeBtn).CornerRadius = UDim.new(0,6)
-
-    local infoLbl = Instance.new("TextLabel", p)
-    infoLbl.Size = UDim2.new(1, -10, 0, 40)
-    infoLbl.Position = UDim2.new(0,8,0,y+36)
-    infoLbl.BackgroundTransparency = 1
-    infoLbl.Font = Enum.Font.Gotham
-    infoLbl.TextSize = 12
-    infoLbl.TextColor3 = Color3.fromRGB(170,170,170)
-    infoLbl.Text = "Click 'Change Hotkey' then press the key you want. Default is RightControl. Hub will still run when hidden."
-    infoLbl.TextWrapped = true
-
-    local conn
-    changeBtn.MouseButton1Click:Connect(function()
-        hotLabel.Text = "Press a key..."
-        if conn then conn:Disconnect() end
-        conn = UserInputService.InputBegan:Connect(function(input, gpe)
-            if gpe then return end
-            if input.UserInputType == Enum.UserInputType.Keyboard then
-                Hotkey = input.KeyCode
-                hotLabel.Text = "Toggle Hotkey: "..tostring(Hotkey.Name)
-                conn:Disconnect()
-            end
-        end)
-    end)
-end
-
--- ====== Rejoin button on settings (quick) ======
-do
-    local p = panels["Settings"]
-    local btn = Instance.new("TextButton", p)
-    btn.Size = UDim2.new(0,140,0,34)
-    btn.Position = UDim2.new(0, 300, 0, 10) -- right side
-    btn.Text = "Rejoin Server"
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 13
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-    btn.TextColor3 = Color3.fromRGB(230,230,230)
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
-    btn.MouseButton1Click:Connect(function()
-        pcall(function() TeleportService:Teleport(game.PlaceId, player) end)
-    end)
-end
-
--- ====== Author label bottom ======
-local foot = Instance.new("TextLabel")
-foot.Size = UDim2.new(1, 0, 0, 18)
-foot.Position = UDim2.new(0,0,1,-18)
-foot.BackgroundTransparency = 1
-foot.Font = Enum.Font.Gotham
-foot.TextSize = 11
-foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text = "NTBA • Fruit Hub"
-foot.Parent = Main
-
--- done
-print("NTBA Fruit Hub initialized.")
+    local hotLabel=Instance.new("TextLabel",p)
+    hotLabel.Size=UDim2.new(0,260,0,28)
+    hotLabel.Position=UDim2.new(0,8,0,y)
+    hotLabel.BackgroundTransparency=1
+    hotLabel.Font=Enum.Font.Gotham
+    hotLabel.TextSize=13
+    hotLabel.TextColor3=Color3
