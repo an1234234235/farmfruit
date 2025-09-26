@@ -1,6 +1,15 @@
---// Lib UI
+--[[
+    Fruit Hub FINAL
+    Features:
+    - Farm Fruit (Auto Z,X,C,V)
+    - Farm Haki (Auto R)
+    - Auto Fruit (nhặt trái hiếm, chia layout 2 cột)
+    - Settings (Rejoin + Hotkey toggle UI)
+]]--
+
+-- UI Lib
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-local Window = OrionLib:MakeWindow({Name = "Fruit Hub FINAL", HidePremium = false, SaveConfig = true, ConfigFolder = "FruitHub"})
+local Window = OrionLib:MakeWindow({Name = "🍎 Fruit Hub FINAL", HidePremium = false, SaveConfig = true, ConfigFolder = "FruitHub"})
 
 -- Tabs
 local FarmTab = Window:MakeTab({Name = "Farm Fruit", Icon = "rbxassetid://4483345998", PremiumOnly = false})
@@ -10,48 +19,47 @@ local SettingTab = Window:MakeTab({Name = "Settings", Icon = "rbxassetid://44833
 
 -- Player
 local player = game.Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local hum = char:WaitForChild("Humanoid")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
---// ================= FARM FRUIT =================
-local AutoSkills = {
-    Z = false,
-    X = false,
-    C = false,
-    V = false,
-    R = false -- thêm phím R nếu farm haki riêng
-}
+-- ================= FARM FRUIT =================
+local AutoSkills = {Z=false,X=false,C=false,V=false}
 
--- Spam skill
 task.spawn(function()
     while task.wait(0.2) do
-        for key, state in pairs(AutoSkills) do
+        for key,state in pairs(AutoSkills) do
             if state then
-                game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode[key], false, game)
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode[key], false, game)
                 task.wait(0.05)
-                game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode[key], false, game)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode[key], false, game)
             end
         end
     end
 end)
 
-FarmTab:AddToggle({Name="Auto Z", Default=false, Callback=function(v) AutoSkills.Z = v end})
-FarmTab:AddToggle({Name="Auto X", Default=false, Callback=function(v) AutoSkills.X = v end})
-FarmTab:AddToggle({Name="Auto C", Default=false, Callback=function(v) AutoSkills.C = v end})
-FarmTab:AddToggle({Name="Auto V", Default=false, Callback=function(v) AutoSkills.V = v end})
+FarmTab:AddToggle({Name="Auto Z", Default=false, Callback=function(v) AutoSkills.Z=v end})
+FarmTab:AddToggle({Name="Auto X", Default=false, Callback=function(v) AutoSkills.X=v end})
+FarmTab:AddToggle({Name="Auto C", Default=false, Callback=function(v) AutoSkills.C=v end})
+FarmTab:AddToggle({Name="Auto V", Default=false, Callback=function(v) AutoSkills.V=v end})
 
---// ================= FARM HAKI =================
+-- ================= FARM HAKI =================
 local AutoHaki = false
 HakiTab:AddToggle({
     Name="Auto Farm Haki (R)",
     Default=false,
-    Callback=function(v)
-        AutoHaki = v
-        AutoSkills.R = v -- dùng phím R để bật haki liên tục
-    end
+    Callback=function(v) AutoHaki=v end
 })
 
---// ================= AUTO FRUIT =================
+task.spawn(function()
+    while task.wait(8) do
+        if AutoHaki then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+            task.wait(0.2)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+        end
+    end
+end)
+
+-- ================= AUTO FRUIT =================
 local RF_RareDevilfruit = {
     "Smoke","Sand","Rumble","Quake","Phoenix","Ope","Magma","Light",
     "Hollow","Alice","Gas","Flare","Dark","Chilly","Candy",
@@ -59,9 +67,7 @@ local RF_RareDevilfruit = {
 }
 
 local FruitToggles = {}
-for _, fruitName in ipairs(RF_RareDevilfruit) do
-    FruitToggles[fruitName] = false
-end
+for _,f in ipairs(RF_RareDevilfruit) do FruitToggles[f]=false end
 
 local function pickFruit(fruitModel)
     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and fruitModel:FindFirstChild("Handle") then
@@ -72,13 +78,13 @@ local function pickFruit(fruitModel)
     end
 end
 
--- Check liên tục
+-- Loop check trái
 task.spawn(function()
     while task.wait(0.2) do
         for _, v in pairs(workspace:GetChildren()) do
             if v:IsA("Tool") or v:IsA("Model") then
                 for fruit, enabled in pairs(FruitToggles) do
-                    if enabled and string.find(v.Name, fruit) and string.find(v.Name, "Fruit") then
+                    if enabled and v.Name:find(fruit) and v.Name:find("Fruit") then
                         pickFruit(v)
                     end
                 end
@@ -87,34 +93,37 @@ task.spawn(function()
     end
 end)
 
--- Nếu có trái mới spawn
 workspace.ChildAdded:Connect(function(v)
-    task.wait(0.05)
+    task.wait(0.1)
     if v:IsA("Tool") or v:IsA("Model") then
         for fruit, enabled in pairs(FruitToggles) do
-            if enabled and string.find(v.Name, fruit) and string.find(v.Name, "Fruit") then
+            if enabled and v.Name:find(fruit) and v.Name:find("Fruit") then
                 pickFruit(v)
             end
         end
     end
 end)
 
--- UI Auto Fruit
-for _, fruitName in ipairs(RF_RareDevilfruit) do
+-- UI Auto Fruit (chia 2 cột)
+local column = 0
+for i,fruitName in ipairs(RF_RareDevilfruit) do
     AutoFruitTab:AddToggle({
         Name = fruitName,
         Default = false,
-        Callback = function(Value)
-            FruitToggles[fruitName] = Value
-        end    
+        Callback = function(v) FruitToggles[fruitName] = v end
     })
+    column = column + 1
+    if column >= 2 then
+        AutoFruitTab:AddParagraph("","") -- tạo khoảng cách để xuống dòng
+        column = 0
+    end
 end
 
---// ================= SETTINGS =================
+-- ================= SETTINGS =================
 SettingTab:AddButton({
     Name = "Rejoin Server",
     Callback = function()
-        game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+        game:GetService("TeleportService"):Teleport(game.PlaceId, player)
     end
 })
 
@@ -128,9 +137,7 @@ SettingTab:AddTextbox({
     Default = "RightControl",
     TextDisappear = true,
     Callback = function(value)
-        local success, key = pcall(function()
-            return Enum.KeyCode[value]
-        end)
+        local success, key = pcall(function() return Enum.KeyCode[value] end)
         if success and key then
             Hotkey = key
             if hotkeyConnection then hotkeyConnection:Disconnect() end
@@ -143,9 +150,10 @@ SettingTab:AddTextbox({
     end
 })
 
--- Gắn hotkey ban đầu
-hotkeyConnection = UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Hotkey then
-        OrionLib:ToggleUI()
-    end
+-- mặc định gắn hotkey ban đầu
+hotkeyConnection = UserInputService.InputBegan:Connect(function(input,gpe)
+    if not gpe and input.KeyCode==Hotkey then OrionLib:ToggleUI() end
 end)
+
+-- Init
+OrionLib:Init()
