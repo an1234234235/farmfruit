@@ -29,7 +29,7 @@ local AutoFruitState = {}
 for _, fruitName in ipairs(RF_RareDevilfruit) do
     AutoFruitState[fruitName] = false
 end
-local PICKUP_RANGE = 50 
+local PICKUP_RANGE = math.huge -- ĐÃ ĐẶT PHẠM VI LÀ TOÀN BỘ MAP
 local billboardGuiMap = {}
 
 local ITEM_DROP_LIST = {
@@ -91,27 +91,26 @@ local function pickUpFruit(v, fruitName, pickupRemote)
     -- Sử dụng Coroutine.wrap để thực thi nhanh chóng, tránh bị chặn
     coroutine.wrap(function()
         if hrp and hrp.Parent and v.PrimaryPart then
-            local distance = (hrp.Position - v.PrimaryPart.Position).Magnitude
             
-            if distance < PICKUP_RANGE then
-                
-                print("!!! Teleporting to fruit: " .. fruitName .. " !!!")
-                hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
-                task.wait(0.05)
-                
-                if pickupRemote and pickupRemote:IsA("RemoteEvent") then
-                    print("!!! Auto-Picked up: " .. fruitName .. " bằng RemoteEvent FireServer !!!")
-                    pcall(function()
-                        pickupRemote:FireServer()
-                    end)
-                else
-                    print("!!! Auto-Picked up: " .. fruitName .. " bằng Touch (Dự phòng) !!!")
-                    -- Touch pickup (chạm) thường được thực hiện sau khi tele
-                end
-                
-                task.wait(1.5) 
-                return 
+            -- Không cần kiểm tra khoảng cách vì đã là math.huge, chỉ cần Teleport
+            
+            print("!!! Teleporting to fruit: " .. fruitName .. " !!!")
+            -- Teleport cách quả 2 Studs để chuẩn bị nhặt
+            hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
+            task.wait(0.02) -- Giảm thời gian chờ Teleport
+
+            if pickupRemote and pickupRemote:IsA("RemoteEvent") then
+                print("!!! Auto-Picked up: " .. fruitName .. " bằng RemoteEvent FireServer !!!")
+                pcall(function()
+                    pickupRemote:FireServer()
+                end)
+            else
+                print("!!! Auto-Picked up: " .. fruitName .. " bằng Touch (Dự phòng) !!!")
+                -- Touch pickup (chạm) thường được thực hiện sau khi tele
             end
+            
+            task.wait(1.5) -- Chờ đủ lâu để quả biến mất/nhặt xong
+            return 
         end
     end)()
 end
@@ -121,6 +120,7 @@ local function checkFruitsInWorkspace()
     for i, v in pairs(workspace:GetChildren()) do  
         if v:IsA("Model") and v:FindFirstChild("PrimaryPart") then 
             for _, fruitName in ipairs(RF_RareDevilfruit) do
+                -- Kiểm tra cả trái ác quỷ và trái bị khóa
                 local fruitInstance = v:FindFirstChild(fruitName .. " Fruit") or v:FindFirstChild("Lock Fruit")
                 
                 if fruitInstance and v.PrimaryPart then
@@ -129,6 +129,7 @@ local function checkFruitsInWorkspace()
                     
                     if AutoFruitState[fruitName] and hrp and hrp.Parent and v.PrimaryPart then
                         
+                        -- Tìm Remote Event để nhặt
                         local pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Relay") and fruitInstance.ClickSelector.Relay:FindFirstChild("Pickup")
                         if not pickupRemote then
                             pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Pickup")
@@ -166,7 +167,7 @@ local function checkFruitsInPlayers()
     end
 end
 
--- Vòng lặp tìm trái cây riêng
+-- Vòng lặp tìm trái cây riêng - Tăng tốc độ kiểm tra
 task.spawn(function()
     while true do
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -174,7 +175,7 @@ task.spawn(function()
             checkFruitsInWorkspace()
             checkFruitsInPlayers()
         end
-        task.wait(0.5) 
+        task.wait(0.1) -- Giảm thời gian chờ xuống 0.1s để check liên tục hơn
     end
 end)
 
@@ -794,7 +795,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.7 (Custom Keybind)"
+foot.Text="NTBA • Fruit Hub v16.8 (Full Map Range)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.7 - Custom Keybind feature added to Settings tab. Default key is RightControl.")
+print("NTBA Fruit Hub v16.8 - Fruit search range is now set to FULL MAP and check speed increased.")
