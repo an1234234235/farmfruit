@@ -28,9 +28,11 @@ end
 local PICKUP_RANGE = 50 
 local billboardGuiMap = {}
 
+-- Sửa đổi chính ở đây: Thêm "Cantaloupe"
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
-    ["Cantaloup"] = true,
+    ["Cantaloup"] = true, -- Giữ lại, đề phòng
+    ["Cantaloupe"] = true, -- Đã thêm quả Cantaloupe
     ["Banana"] = true,
     ["Green Apple"] = true,
     ["Coconut"] = true,
@@ -82,7 +84,6 @@ local function removeBillboardGuiForFruit(model, fruitName)
     end
 end
 
--- LOGIC CỐ ĐỊNH: Tách Teleport và Pickup ra một hàm riêng để đảm bảo tốc độ
 local function pickUpFruit(v, fruitName, pickupRemote)
     -- Sử dụng Coroutine.wrap để thực thi nhanh chóng, tránh bị chặn
     coroutine.wrap(function()
@@ -132,7 +133,6 @@ local function checkFruitsInWorkspace()
 
                         if pickupRemote and pickupRemote:IsA("RemoteEvent") then
                             pickUpFruit(v, fruitName, pickupRemote)
-                            -- Không cần return, để các trái khác vẫn được kiểm tra
                         end
                     end
                 else
@@ -163,7 +163,7 @@ local function checkFruitsInPlayers()
     end
 end
 
--- LOGIC CỐ ĐỊNH: Tách vòng lặp Fruit Finder ra riêng (RẤT QUAN TRỌNG)
+-- Vòng lặp tìm trái cây riêng
 task.spawn(function()
     while true do
         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -171,7 +171,7 @@ task.spawn(function()
             checkFruitsInWorkspace()
             checkFruitsInPlayers()
         end
-        task.wait(0.5) -- Kiểm tra trái cây 2 lần/giây
+        task.wait(0.5) 
     end
 end)
 
@@ -635,7 +635,7 @@ do
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    note.Text = "Chức năng này sẽ tìm và drop BẤT KỲ Tool/Fruit nào trong túi đồ có tên nằm trong danh sách đen (Apple, Cantaloup, Banana, Green Apple, Coconut, Pumpkin, Prickly Pear, Melon). Cơ chế: Ép trang bị -> Backspace."
+    note.Text = "Chức năng này sẽ tìm và drop BẤT KỲ Tool/Fruit nào trong túi đồ có tên nằm trong danh sách đen (Apple, Cantaloup, Cantaloupe, Banana, Green Apple, Coconut, Pumpkin, Prickly Pear, Melon). Cơ chế: Ép trang bị -> Backspace."
     y = y + 90 
 end
 
@@ -696,7 +696,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.3 (Fruit Fix)"
+foot.Text="NTBA • Fruit Hub v16.4 (Drop List Fix)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.3 - Fruit Finder/Pickup/Teleport Fix Applied.")
+print("NTBA Fruit Hub v16.4 - Cantaloupe Added to Drop List.")
