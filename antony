@@ -1,6 +1,3 @@
--- Fruit Hub (Dark + Neon) - NTBA v11.0 - NEW TAB: DROP
--- Đã thêm tab "Drop" và chuyển chức năng Auto Drop sang tab này.
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -9,24 +6,12 @@ local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
 local Backpack = player:WaitForChild("Backpack")
 
--- Biến kiểm soát Farm
 local AutoFarmNPC = false
 local FarmRadius = 150 
 local AutoSkillState={Z=false,X=false,C=false,V=false} 
 local AutoHakiState=false 
 local AutoDropItem = false 
 
--- Remove old UI
-pcall(function()
-    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
-        player.PlayerGui.FruitHubUI:Destroy()
-    end
-end)
-
-local PlayerGui = player:WaitForChild("PlayerGui", 5) 
-if not PlayerGui then return end 
-
--- ===== DANH SÁCH VẬT PHẨM CẦN DROP (CHÍNH XÁC) =====
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
     ["Cantaloup"] = true,
@@ -37,12 +22,9 @@ local ITEM_DROP_LIST = {
     ["Prickly Pear"] = true,
     ["Melon"] = true,
 }
--- ==========================================================
 
--- Hàm tìm vật phẩm trong ITEM_DROP_LIST
 local function findDroppableItemInList()
     for _, item in ipairs(Backpack:GetChildren()) do
-        -- Kiểm tra nếu vật phẩm là Tool/HopperBin và tên của nó có trong danh sách đen
         if (item:IsA("Tool") or item:IsA("HopperBin")) and ITEM_DROP_LIST[item.Name] then 
             return item
         end
@@ -50,7 +32,15 @@ local function findDroppableItemInList()
     return nil
 end
 
--- ===== UI & CONTROLS (Phần này được giữ nguyên) =====
+pcall(function()
+    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
+        player.PlayerGui.FruitHubUI:Destroy()
+    end
+end)
+
+local PlayerGui = player:WaitForChild("PlayerGui", 5) 
+if not PlayerGui then return end 
+
 local MAIN_W, MAIN_H = 740, 440
 local Sidebar_W = 160
 local ScreenGui = Instance.new("ScreenGui")
@@ -113,9 +103,8 @@ CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
 CloseBtn.BorderSizePixel = 0
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-do -- Drag hub
+do
     local dragging = false
     local dragStart, startPos
     TitleBar.InputBegan:Connect(function(input)
@@ -136,7 +125,6 @@ do -- Drag hub
     end)
 end
 
--- Controls (Hotkey Ctrl)
 local Hotkey=Enum.KeyCode.RightControl
 local HubVisible=true
 UserInputService.InputBegan:Connect(function(input,gpe)
@@ -160,7 +148,6 @@ SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
--- Dải tab mới: Thêm "Drop"
 local tabs = {"AutoFarm","AutoNPC","AutoHaki","Drop","Settings"}
 local tabButtons, panels = {}, {}
 
@@ -206,7 +193,6 @@ for name, btn in pairs(tabButtons) do
 end
 
 
--- AutoFarm (Skills: Z/X/C/V)
 do
     local p = panels["AutoFarm"] 
     local y=6
@@ -240,7 +226,6 @@ do
     end
 end
 
--- Skill Spam Loop
 task.spawn(function()
     while true do
         task.wait(0.18)
@@ -257,7 +242,6 @@ task.spawn(function()
 end)
 
 
--- Auto Farm NPC 
 local AutoNPCPanel = panels["AutoNPC"]
 do 
     local p = AutoNPCPanel 
@@ -313,7 +297,6 @@ do
     y = y + 50
 end
 
--- HÀM AUTO FARM CHÍNH
 local function findAndFarmNPC()
     local targetNPC = nil
     local shortestDistance = FarmRadius + 1
@@ -356,7 +339,6 @@ local function findAndFarmNPC()
     return false
 end
 
--- LOOP AUTO FARM
 task.spawn(function()
     while true do
         if AutoFarmNPC and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
@@ -367,7 +349,6 @@ task.spawn(function()
 end)
 
 
--- AutoHaki (R)
 local AutoHakiPanel = panels["AutoHaki"]
 do
     local p = AutoHakiPanel 
@@ -411,7 +392,6 @@ task.spawn(function()
 end)
 
 
--- ===== AUTO DROP (TAB MỚI) =====
 local DropPanel = panels["Drop"]
 do
     local p = DropPanel
@@ -457,7 +437,6 @@ do
     y = y + 90 
 end
 
--- ===== SETTINGS (Đã dọn dẹp) =====
 local SettingsPanel = panels["Settings"]
 do
     local p = SettingsPanel
@@ -485,7 +464,6 @@ do
     y = y + 50
 end
 
--- LOOP AUTO DROP ITEM (Logic giữ nguyên)
 task.spawn(function()
     while true do
         if AutoDropItem then
@@ -493,26 +471,22 @@ task.spawn(function()
             
             if itemToDrop then
                 pcall(function()
-                    -- BƯỚC 1: Mô phỏng việc "click/chọn" bằng cách ép game trang bị vật phẩm
                     itemToDrop.Parent = Character 
-                    task.wait(0.1) 
+                    task.wait(0.01) 
                     
-                    -- BƯỚC 2: Mô phỏng nhấn Backspace để thả vật phẩm đang được trang bị
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
                     task.wait(0.01) 
                     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
                     
-                    -- Đợi thêm để vật phẩm được thả hẳn trước khi lặp lại
-                    task.wait(0.5) 
+                    task.wait(0.1) 
                 end)
             end
         end
-        task.wait(0.1) -- Tần suất kiểm tra
+        task.wait(0.1) 
     end
 end)
 
 
--- Footer
 local foot=Instance.new("TextLabel")
 foot.Size=UDim2.new(1,0,0,18)
 foot.Position=UDim2.new(0,0,1,-18)
@@ -520,7 +494,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v11.0"
+foot.Text="NTBA • Fruit Hub v12.0"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v11.0 - New Tab 'Drop' Initialized.")
+print("NTBA Fruit Hub v12.0 - Optimized Drop Initialized.")
