@@ -184,7 +184,7 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- Tạo hàm Switch Toggle
+-- Tạo hàm Switch Toggle (Đã sửa lỗi)
 local function createToggleSwitch(parent, initialPos, onClickCallback, initialState, enabledColor, disabledColor, toggleSize)
     toggleSize = toggleSize or UDim2.new(0, 44, 0, 24)
     local Switch = Instance.new("TextButton")
@@ -212,6 +212,10 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     
     Switch.MouseButton1Click:Connect(function()
         state = not state
+        
+        -- Gọi callback trước để cập nhật biến Lua
+        onClickCallback(state) 
+        
         Switch:TweenBackgroundColor(
             "BackgroundTransparency", 
             state and enabledColor or disabledColor, 
@@ -226,7 +230,6 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
             0.2, 
             true
         )
-        onClickCallback(state)
     end)
     return Switch, Slider
 end
@@ -428,15 +431,15 @@ do
         local keyLabel = Instance.new("TextLabel", SkillContainer)
         keyLabel.Text = key
         keyLabel.Size = UDim2.new(0, 20, 0, 24)
+        keyLabel.Position = UDim2.new(0, 0 + (i-1)*70, 0, 0) -- Vị trí cho chữ
         keyLabel.BackgroundTransparency = 1
         keyLabel.Font = Enum.Font.GothamBold
         keyLabel.TextSize = 14
         keyLabel.TextColor3 = Color3.fromRGB(255, 170, 255)
 
-        local togglePos = UDim2.new(0, 25 + (i-1)*70, 0, 0)
         createToggleSwitch(
             SkillContainer, 
-            UDim2.new(0, 25 + (i-1)*70, 0, 0),
+            UDim2.new(0, 25 + (i-1)*70, 0, 0), -- Vị trí cho nút gạt
             function(state)
                 AutoSkillState[key] = state
             end, 
@@ -809,7 +812,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.5 (Final UI Update)"
+foot.Text="NTBA • Fruit Hub v16.6 (Toggle Switch Fix)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.5 - UI Transparency and Toggle Switch Applied.")
+print("NTBA Fruit Hub v16.6 - Toggle Switch Logic Fixed.")
