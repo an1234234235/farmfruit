@@ -29,7 +29,7 @@ local AutoFruitState = {}
 for _, fruitName in ipairs(RF_RareDevilfruit) do
     AutoFruitState[fruitName] = false
 end
-local PICKUP_RANGE = math.huge -- ĐÃ ĐẶT PHẠM VI LÀ TOÀN BỘ MAP
+local PICKUP_RANGE = math.huge 
 local billboardGuiMap = {}
 
 local ITEM_DROP_LIST = {
@@ -87,26 +87,21 @@ local function removeBillboardGuiForFruit(model, fruitName)
     end
 end
 
+-- HÀM NHẶT QUẢ ĐÃ ĐƯỢC CẬP NHẬT (BỎ TELEPORT)
 local function pickUpFruit(v, fruitName, pickupRemote)
-    -- Sử dụng Coroutine.wrap để thực thi nhanh chóng, tránh bị chặn
     coroutine.wrap(function()
         if hrp and hrp.Parent and v.PrimaryPart then
             
-            -- Không cần kiểm tra khoảng cách vì đã là math.huge, chỉ cần Teleport
+            -- BỎ PHẦN TELEPORT (hrp.CFrame = ...)
             
-            print("!!! Teleporting to fruit: " .. fruitName .. " !!!")
-            -- Teleport cách quả 2 Studs để chuẩn bị nhặt
-            hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
-            task.wait(0.02) -- Giảm thời gian chờ Teleport
-
             if pickupRemote and pickupRemote:IsA("RemoteEvent") then
-                print("!!! Auto-Picked up: " .. fruitName .. " bằng RemoteEvent FireServer !!!")
+                print("!!! Auto-Picked up (NO TELEPORT): " .. fruitName .. " bằng RemoteEvent FireServer !!!")
                 pcall(function()
                     pickupRemote:FireServer()
                 end)
             else
-                print("!!! Auto-Picked up: " .. fruitName .. " bằng Touch (Dự phòng) !!!")
-                -- Touch pickup (chạm) thường được thực hiện sau khi tele
+                -- Trường hợp dự phòng này không xảy ra nếu RemoteEvent bị thay đổi tên
+                print("!!! WARNING: RemoteEvent không được tìm thấy cho " .. fruitName .. " !!!")
             end
             
             task.wait(1.5) -- Chờ đủ lâu để quả biến mất/nhặt xong
@@ -120,7 +115,6 @@ local function checkFruitsInWorkspace()
     for i, v in pairs(workspace:GetChildren()) do  
         if v:IsA("Model") and v:FindFirstChild("PrimaryPart") then 
             for _, fruitName in ipairs(RF_RareDevilfruit) do
-                -- Kiểm tra cả trái ác quỷ và trái bị khóa
                 local fruitInstance = v:FindFirstChild(fruitName .. " Fruit") or v:FindFirstChild("Lock Fruit")
                 
                 if fruitInstance and v.PrimaryPart then
@@ -569,7 +563,7 @@ do
     label.Font = Enum.Font.GothamBold
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(255, 255, 0) 
-    label.Text = "AUTO FRUIT PICKUP (RemoteEvent)"
+    label.Text = "AUTO FRUIT PICKUP (NO TELEPORT)" -- Đã đổi tên
     y = y + 30
     
     local scrollFrame = Instance.new("ScrollingFrame", p)
@@ -795,7 +789,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.8 (Full Map Range)"
+foot.Text="NTBA • Fruit Hub v16.9 (No-Teleport Pickup)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.8 - Fruit search range is now set to FULL MAP and check speed increased.")
+print("NTBA Fruit Hub v16.9 - Switched to NO-TELEPORT FRUIT PICKUP. If this fails, the RemoteEvent name is likely wrong for the current game version.")
