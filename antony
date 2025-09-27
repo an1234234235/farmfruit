@@ -184,7 +184,7 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- Tạo hàm Switch Toggle (Đã sửa lỗi)
+-- Tạo hàm Switch Toggle (ĐÃ TỐI ƯU HÓA)
 local function createToggleSwitch(parent, initialPos, onClickCallback, initialState, enabledColor, disabledColor, toggleSize)
     toggleSize = toggleSize or UDim2.new(0, 44, 0, 24)
     local Switch = Instance.new("TextButton")
@@ -216,17 +216,18 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
         -- Gọi callback trước để cập nhật biến Lua
         onClickCallback(state) 
         
+        -- Sử dụng TweenService an toàn hơn
         Switch:TweenBackgroundColor(
-            "BackgroundTransparency", 
-            state and enabledColor or disabledColor, 
-            "Out", 
-            "Quad", 
-            0.2
+            Enum.EasingDirection.Out, 
+            Enum.EasingStyle.Quad, 
+            0.2, 
+            false, 
+            state and enabledColor or disabledColor
         )
         Slider:TweenPosition(
             state and enabledPos or disabledPos, 
-            "Out", 
-            "Quad", 
+            Enum.EasingDirection.Out, 
+            Enum.EasingStyle.Quad, 
             0.2, 
             true
         )
@@ -247,7 +248,7 @@ Main.Name = "Main"
 Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
 Main.Position = UDim2.new(0.5, -MAIN_W/2, 0.12, 0) 
 Main.BackgroundColor3 = Color3.fromRGB(24,24,28)
-Main.BackgroundTransparency = 0.3 -- Tăng độ trong suốt cho Main
+Main.BackgroundTransparency = 0.3 
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0,12)
@@ -261,7 +262,7 @@ local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1,0,0,32) 
 TitleBar.Position = UDim2.new(0,0,0,0)
 TitleBar.BackgroundColor3 = Color3.fromRGB(32,32,36)
-TitleBar.BackgroundTransparency = 0.4 -- Tăng độ trong suốt cho TitleBar
+TitleBar.BackgroundTransparency = 0.4 
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0,12)
@@ -338,7 +339,7 @@ local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0,Sidebar_W,1,-32)
 Sidebar.Position = UDim2.new(0,0,0,32)
 Sidebar.BackgroundColor3 = Color3.fromRGB(36,36,38)
-Sidebar.BackgroundTransparency = 0.4 -- Tăng độ trong suốt cho Sidebar
+Sidebar.BackgroundTransparency = 0.4 
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
@@ -349,7 +350,7 @@ SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
-local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit","Drop","Settings"}
+local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit","Drop Fruit Mix","Settings"}
 local tabButtons, panels = {}, {}
 
 local Panel_X_Start = Sidebar_W + 10 
@@ -361,7 +362,7 @@ for i,name in ipairs(tabs) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1,-10,0,32)
     btn.BackgroundColor3 = Color3.fromRGB(44,44,46)
-    btn.BackgroundTransparency = 0.5 -- Độ trong suốt cho nút tab
+    btn.BackgroundTransparency = 0.5 
     btn.BorderSizePixel = 0
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 13
@@ -420,18 +421,12 @@ do
     SkillContainer.Position = UDim2.new(0,5,0,y)
     SkillContainer.BackgroundTransparency = 1
     
-    local listLayout = Instance.new("UIListLayout", SkillContainer)
-    listLayout.FillDirection = Enum.FillDirection.Horizontal
-    listLayout.Padding = UDim.new(0, 10)
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-
     local keys = {"Z","X","C","V"}
     for i,key in ipairs(keys) do
         local keyLabel = Instance.new("TextLabel", SkillContainer)
         keyLabel.Text = key
         keyLabel.Size = UDim2.new(0, 20, 0, 24)
-        keyLabel.Position = UDim2.new(0, 0 + (i-1)*70, 0, 0) -- Vị trí cho chữ
+        keyLabel.Position = UDim2.new(0, 0 + (i-1)*70, 0, 0)
         keyLabel.BackgroundTransparency = 1
         keyLabel.Font = Enum.Font.GothamBold
         keyLabel.TextSize = 14
@@ -439,7 +434,7 @@ do
 
         createToggleSwitch(
             SkillContainer, 
-            UDim2.new(0, 25 + (i-1)*70, 0, 0), -- Vị trí cho nút gạt
+            UDim2.new(0, 25 + (i-1)*70, 0, 0),
             function(state)
                 AutoSkillState[key] = state
             end, 
@@ -700,9 +695,9 @@ do
 end
 
 -- ======================================================
--- 5. AUTO DROP
+-- 5. AUTO DROP (Đã đổi tên)
 -- ======================================================
-local DropPanel = panels["Drop"]
+local DropPanel = panels["Drop Fruit Mix"]
 do
     local p = DropPanel
     local y = 6
@@ -812,7 +807,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.6 (Toggle Switch Fix)"
+foot.Text="NTBA • Fruit Hub v16.7 (Toggle Switch Fixed)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.6 - Toggle Switch Logic Fixed.")
+print("NTBA Fruit Hub v16.7 - Toggle Switch UI/Logic Fixed. 'Drop' renamed to 'Drop Fruit Mix'.")
