@@ -21,6 +21,10 @@ local AutoSkillState={Z=false,X=false,C=false,V=false}
 local AutoHakiState=false 
 local AutoDropItem = false 
 
+-- Thêm biến Hotkey có thể tùy chỉnh
+local Hotkey = Enum.KeyCode.RightControl
+local HubVisible = true
+
 local AutoFruitState = {} 
 for _, fruitName in ipairs(RF_RareDevilfruit) do
     AutoFruitState[fruitName] = false
@@ -197,7 +201,7 @@ Main.Name = "Main"
 Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
 Main.Position = UDim2.new(0.5, -MAIN_W/2, 0.12, 0) 
 Main.BackgroundColor3 = Color3.fromRGB(24,24,28)
-Main.BackgroundTransparency = 0.15 -- Làm mờ khung chính
+Main.BackgroundTransparency = 0.15 
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0,12)
@@ -211,7 +215,7 @@ local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1,0,0,32) 
 TitleBar.Position = UDim2.new(0,0,0,0)
 TitleBar.BackgroundColor3 = Color3.fromRGB(32,32,36)
-TitleBar.BackgroundTransparency = 0.15 -- Làm mờ TitleBar
+TitleBar.BackgroundTransparency = 0.15 
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0,12)
@@ -247,7 +251,7 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 13
 CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
 CloseBtn.BorderSizePixel = 0
-CloseBtn.BackgroundTransparency = 0.1 -- Giảm độ mờ của nút để dễ nhìn
+CloseBtn.BackgroundTransparency = 0.1 
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
 CloseBtn.MouseButton1Click:Connect(function() 
@@ -276,12 +280,11 @@ do
     end)
 end
 
-local Hotkey=Enum.KeyCode.RightControl
-local HubVisible=true
+-- Xử lý Hotkey (Dùng biến Hotkey đã được khai báo)
 UserInputService.InputBegan:Connect(function(input,gpe)
-    if not gpe and input.KeyCode==Hotkey then
-        HubVisible=not HubVisible
-        ScreenGui.Enabled=HubVisible
+    if not gpe and input.KeyCode == Hotkey then
+        HubVisible = not HubVisible
+        ScreenGui.Enabled = HubVisible
     end
 end)
 
@@ -289,7 +292,7 @@ local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0,Sidebar_W,1,-32) 
 Sidebar.Position = UDim2.new(0,0,0,32)
 Sidebar.BackgroundColor3 = Color3.fromRGB(36,36,38)
-Sidebar.BackgroundTransparency = 0.15 -- Làm mờ Sidebar
+Sidebar.BackgroundTransparency = 0.15 
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
@@ -312,7 +315,7 @@ for i,name in ipairs(tabs) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1,-10,0,32) 
     btn.BackgroundColor3 = Color3.fromRGB(44,44,46)
-    btn.BackgroundTransparency = 0.2 -- Làm mờ nút Sidebar
+    btn.BackgroundTransparency = 0.2 
     btn.BorderSizePixel = 0
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 13
@@ -327,7 +330,7 @@ for i,name in ipairs(tabs) do
     panel.Name = name .. "Panel"
     panel.Size = UDim2.new(0, Panel_W, 0, Panel_H) 
     panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start) 
-    panel.BackgroundTransparency = 1 -- Nội dung Panel trong suốt
+    panel.BackgroundTransparency = 1 
     panel.Visible = false
     panel.Parent = Main
     panels[name] = panel
@@ -342,7 +345,7 @@ for name, btn in pairs(tabButtons) do
         for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46); v.BackgroundTransparency = 0.2 end
         for _,p in pairs(panels) do p.Visible = false end
         btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-        btn.BackgroundTransparency = 0.1 -- Đảm bảo nút được chọn nổi hơn
+        btn.BackgroundTransparency = 0.1 
         panels[name].Visible = true
     end)
 end
@@ -574,13 +577,13 @@ do
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
     
-    -- Tăng khoảng cách để tránh các nút chạm vào nhau (Giữ lại để căn chỉnh bằng tay 2 cột)
+    
     local buttonHeight = 30
     local spacing = 5
-    local buttonMargin = 10 -- Khoảng cách lề bên ngoài
-    local innerSpacing = 10 -- Khoảng cách giữa 2 cột
+    local buttonMargin = 10 
+    local innerSpacing = 10 
     
-    -- Tính toán kích thước nút cho 2 cột
+    
     local buttonWidth = (Panel_W - (buttonMargin * 2) - innerSpacing) / 2
     local currentY = buttonMargin
     
@@ -588,11 +591,11 @@ do
         local btn = Instance.new("TextButton", scrollFrame)
         btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
         
-        -- Sắp xếp 2 cột
+        
         local columnIndex = (i - 1) % 2
         local rowIndex = math.floor((i - 1) / 2)
         
-        -- Tính toán vị trí
+        
         local posX = buttonMargin + columnIndex * (buttonWidth + innerSpacing)
         local posY = buttonMargin + rowIndex * (buttonHeight + spacing)
 
@@ -684,8 +687,69 @@ do
     label.Font = Enum.Font.GothamBold
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Text = "Các Thiết Lập Khác"
+    label.Text = "TÙY CHỈNH NÚT ẨN/HIỆN HUB"
     y = y + 30
+    
+    -- Label hiển thị nút hiện tại
+    local keyLabel = Instance.new("TextLabel", p)
+    keyLabel.Name = "KeyLabel"
+    keyLabel.Size = UDim2.new(0, 180, 0, 24)
+    keyLabel.Position = UDim2.new(0, 10, 0, y)
+    keyLabel.BackgroundTransparency = 1
+    keyLabel.Font = Enum.Font.Gotham
+    keyLabel.TextSize = 12
+    keyLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    keyLabel.TextXAlignment = Enum.TextXAlignment.Left
+    local function updateKeyLabel()
+        keyLabel.Text = "Nút hiện tại: " .. tostring(Hotkey.Name)
+    end
+    updateKeyLabel()
+    y = y + 28
+    
+    -- Textbox để nhập phím mới
+    local keyInput = Instance.new("TextBox", p)
+    keyInput.Size = UDim2.new(0, 180, 0, 32)
+    keyInput.Position = UDim2.new(0, 10, 0, y)
+    keyInput.PlaceholderText = "Nhập phím mới (Ví dụ: F2)"
+    keyInput.Text = ""
+    keyInput.Font = Enum.Font.Gotham
+    keyInput.TextSize = 14
+    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyInput.BackgroundColor3 = Color3.fromRGB(40, 40, 44)
+    keyInput.BackgroundTransparency = 0.15
+    keyInput.TextXAlignment = Enum.TextXAlignment.Center
+    Instance.new("UICorner", keyInput).CornerRadius = UDim.new(0, 6)
+    y = y + 42
+    
+    -- Nút lưu
+    local saveBtn = Instance.new("TextButton", p)
+    saveBtn.Size = UDim2.new(0, 100, 0, 32)
+    saveBtn.Position = UDim2.new(0, 200, 0, y - 32)
+    saveBtn.Text = "LƯU PHÍM"
+    saveBtn.Font = Enum.Font.GothamBold
+    saveBtn.TextSize = 14
+    saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    saveBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 80)
+    saveBtn.BackgroundTransparency = 0.15
+    Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
+    
+    saveBtn.MouseButton1Click:Connect(function()
+        local newKeyName = keyInput.Text:upper()
+        local success, newKey = pcall(function() return Enum.KeyCode[newKeyName] end)
+        
+        if success and newKey then
+            Hotkey = newKey
+            updateKeyLabel()
+            keyInput.Text = "" 
+            print("Hotkey đã được thay đổi thành: " .. tostring(Hotkey.Name))
+        else
+            keyInput.Text = "Phím không hợp lệ!"
+            warn("Không thể thay đổi Hotkey: Phím không hợp lệ.")
+            task.wait(1)
+            keyInput.Text = ""
+        end
+    end)
+    y = y + 50
     
     local note = Instance.new("TextLabel", p)
     note.Size = UDim2.new(1, -20, 0, 40)
@@ -693,10 +757,10 @@ do
     note.BackgroundTransparency = 1
     note.Font = Enum.Font.Gotham
     note.TextSize = 12
-    note.TextColor3 = Color3.fromRGB(170, 255, 170)
+    note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    note.Text = "Các tùy chọn Auto Drop đã được chuyển sang tab 'Drop'."
+    note.Text = "Chỉ dùng phím đơn (ví dụ: F2, R, P, LeftControl, RightControl, E...)."
     y = y + 50
 end
 
@@ -730,7 +794,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.6 (Transp & 2-Col)"
+foot.Text="NTBA • Fruit Hub v16.7 (Custom Keybind)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.6 - Transparency added and Fruit panel is now 2 columns.")
+print("NTBA Fruit Hub v16.7 - Custom Keybind feature added to Settings tab. Default key is RightControl.")
