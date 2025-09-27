@@ -28,11 +28,10 @@ end
 local PICKUP_RANGE = 50 
 local billboardGuiMap = {}
 
--- Sửa đổi chính ở đây: Thêm "Cantaloupe"
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
-    ["Cantaloup"] = true, -- Giữ lại, đề phòng
-    ["Cantaloupe"] = true, -- Đã thêm quả Cantaloupe
+    ["Cantaloup"] = true, 
+    ["Cantaloupe"] = true, 
     ["Banana"] = true,
     ["Green Apple"] = true,
     ["Coconut"] = true,
@@ -185,9 +184,56 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- ===== PHẦN UI =====
-local MAIN_W, MAIN_H = 740, 440
-local Sidebar_W = 160
+-- Tạo hàm Switch Toggle
+local function createToggleSwitch(parent, initialPos, onClickCallback, initialState, enabledColor, disabledColor, toggleSize)
+    toggleSize = toggleSize or UDim2.new(0, 44, 0, 24)
+    local Switch = Instance.new("TextButton")
+    Switch.Size = toggleSize
+    Switch.Position = initialPos
+    Switch.BackgroundColor3 = initialState and enabledColor or disabledColor
+    Switch.BackgroundTransparency = 0.5 
+    Switch.Text = ""
+    Switch.BorderSizePixel = 0
+    Switch.Parent = parent
+    Instance.new("UICorner", Switch).CornerRadius = UDim.new(0.5, 0)
+    
+    local Slider = Instance.new("Frame")
+    Slider.Size = UDim2.new(0, 18, 0, 18)
+    Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Slider.BorderSizePixel = 0
+    Slider.Parent = Switch
+    Instance.new("UICorner", Slider).CornerRadius = UDim.new(0.5, 0)
+    
+    local enabledPos = UDim2.new(1, -21, 0.5, -9) 
+    local disabledPos = UDim2.new(0, 3, 0.5, -9)
+    Slider.Position = initialState and enabledPos or disabledPos
+
+    local state = initialState
+    
+    Switch.MouseButton1Click:Connect(function()
+        state = not state
+        Switch:TweenBackgroundColor(
+            "BackgroundTransparency", 
+            state and enabledColor or disabledColor, 
+            "Out", 
+            "Quad", 
+            0.2
+        )
+        Slider:TweenPosition(
+            state and enabledPos or disabledPos, 
+            "Out", 
+            "Quad", 
+            0.2, 
+            true
+        )
+        onClickCallback(state)
+    end)
+    return Switch, Slider
+end
+
+-- ===== PHẦN UI (Kích thước mới và trong suốt) =====
+local MAIN_W, MAIN_H = 640, 380 
+local Sidebar_W = 140
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FruitHubUI"
 ScreenGui.ResetOnSpawn = false
@@ -198,6 +244,7 @@ Main.Name = "Main"
 Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
 Main.Position = UDim2.new(0.5, -MAIN_W/2, 0.12, 0) 
 Main.BackgroundColor3 = Color3.fromRGB(24,24,28)
+Main.BackgroundTransparency = 0.3 -- Tăng độ trong suốt cho Main
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0,12)
@@ -208,20 +255,21 @@ shadow.Thickness = 2
 shadow.Transparency = 0.6
 
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1,0,0,36)
+TitleBar.Size = UDim2.new(1,0,0,32) 
 TitleBar.Position = UDim2.new(0,0,0,0)
 TitleBar.BackgroundColor3 = Color3.fromRGB(32,32,36)
+TitleBar.BackgroundTransparency = 0.4 -- Tăng độ trong suốt cho TitleBar
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0,12)
 
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(0.6,-10,1,0)
-TitleLabel.Position = UDim2.new(0,12,0,0)
+TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
 TitleLabel.Text = "NTBA • Fruit Hub"
-TitleLabel.TextSize = 16
+TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 TitleLabel.Parent = TitleBar
@@ -232,18 +280,18 @@ AuthorLabel.Position = UDim2.new(0.7,10,0,0)
 AuthorLabel.BackgroundTransparency = 1
 AuthorLabel.Font = Enum.Font.Gotham
 AuthorLabel.Text = "Author: NTBA"
-AuthorLabel.TextSize = 13
+AuthorLabel.TextSize = 12
 AuthorLabel.TextColor3 = Color3.fromRGB(160,160,160)
 AuthorLabel.TextXAlignment = Enum.TextXAlignment.Right
 AuthorLabel.Parent = TitleBar
 
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0,36,0,28)
-CloseBtn.Position = UDim2.new(1,-44,0,4)
+CloseBtn.Size = UDim2.new(0,30,0,24) 
+CloseBtn.Position = UDim2.new(1,-38,0,4)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(180,60,60)
 CloseBtn.Text = "X"
 CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 14
+CloseBtn.TextSize = 13
 CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
 CloseBtn.BorderSizePixel = 0
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
@@ -284,15 +332,16 @@ UserInputService.InputBegan:Connect(function(input,gpe)
 end)
 
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0,Sidebar_W,1,-36)
-Sidebar.Position = UDim2.new(0,0,0,36)
+Sidebar.Size = UDim2.new(0,Sidebar_W,1,-32)
+Sidebar.Position = UDim2.new(0,0,0,32)
 Sidebar.BackgroundColor3 = Color3.fromRGB(36,36,38)
+Sidebar.BackgroundTransparency = 0.4 -- Tăng độ trong suốt cho Sidebar
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
-SidebarLayout.Padding = UDim.new(0,8)
+SidebarLayout.Padding = UDim.new(0,6)
 SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
@@ -301,17 +350,18 @@ local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit","Drop","Settings"}
 local tabButtons, panels = {}, {}
 
 local Panel_X_Start = Sidebar_W + 10 
-local Panel_Y_Start = 36 + 10      
+local Panel_Y_Start = 32 + 10      
 local Panel_W = MAIN_W - Sidebar_W - 20 
-local Panel_H = MAIN_H - 36 - 20        
+local Panel_H = MAIN_H - 32 - 20        
 
 for i,name in ipairs(tabs) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,-20,0,36)
+    btn.Size = UDim2.new(1,-10,0,32)
     btn.BackgroundColor3 = Color3.fromRGB(44,44,46)
+    btn.BackgroundTransparency = 0.5 -- Độ trong suốt cho nút tab
     btn.BorderSizePixel = 0
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
+    btn.TextSize = 13
     btn.TextColor3 = Color3.fromRGB(220,220,220)
     btn.Text = name
     btn.Parent = Sidebar
@@ -330,22 +380,30 @@ for i,name in ipairs(tabs) do
 end
 
 panels["AutoFarm"].Visible = true
+tabButtons["AutoFarm"].BackgroundTransparency = 0.2
 tabButtons["AutoFarm"].BackgroundColor3 = Color3.fromRGB(60,60,62)
 
 for name, btn in pairs(tabButtons) do
     btn.MouseButton1Click:Connect(function()
-        for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46) end
+        for k,v in pairs(tabButtons) do 
+            v.BackgroundColor3 = Color3.fromRGB(44,44,46) 
+            v.BackgroundTransparency = 0.5
+        end
         for _,p in pairs(panels) do p.Visible = false end
         btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
+        btn.BackgroundTransparency = 0.2
         panels[name].Visible = true
     end)
 end
 
+-- ======================================================
+-- 1. AUTO FARM (SKILLS)
+-- ======================================================
 do
     local p = panels["AutoFarm"] 
     local y=6
     local label=Instance.new("TextLabel",p)
-    label.Size=UDim2.new(1,0,0,26)
+    label.Size=UDim2.new(1,0,0,24)
     label.Position=UDim2.new(0,0,0,y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -353,24 +411,40 @@ do
     label.TextColor3 = Color3.fromRGB(220,220,220)
     label.Text="Auto Skills (spam keys)"
     y=y+30
-    for i,key in ipairs({"Z","X","C","V"}) do
-        local btn=Instance.new("TextButton",p)
-        btn.Size=UDim2.new(0,100,0,34)
-        btn.Position=UDim2.new(0,10+(i-1)*110,0,y)
-        btn.Text=key.." OFF"
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 14
-        btn.TextColor3 = Color3.fromRGB(230,230,230)
-        btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-        btn.BorderSizePixel = 0
-        Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
-        local state=false
-        btn.MouseButton1Click:Connect(function()
-            state=not state
-            AutoSkillState[key]=state
-            btn.Text=key..(state and " ON" or " OFF")
-            btn.BackgroundColor3=state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
-        end)
+    
+    local SkillContainer = Instance.new("Frame", p)
+    SkillContainer.Size = UDim2.new(1,-10,0,30)
+    SkillContainer.Position = UDim2.new(0,5,0,y)
+    SkillContainer.BackgroundTransparency = 1
+    
+    local listLayout = Instance.new("UIListLayout", SkillContainer)
+    listLayout.FillDirection = Enum.FillDirection.Horizontal
+    listLayout.Padding = UDim.new(0, 10)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+
+    local keys = {"Z","X","C","V"}
+    for i,key in ipairs(keys) do
+        local keyLabel = Instance.new("TextLabel", SkillContainer)
+        keyLabel.Text = key
+        keyLabel.Size = UDim2.new(0, 20, 0, 24)
+        keyLabel.BackgroundTransparency = 1
+        keyLabel.Font = Enum.Font.GothamBold
+        keyLabel.TextSize = 14
+        keyLabel.TextColor3 = Color3.fromRGB(255, 170, 255)
+
+        local togglePos = UDim2.new(0, 25 + (i-1)*70, 0, 0)
+        createToggleSwitch(
+            SkillContainer, 
+            UDim2.new(0, 25 + (i-1)*70, 0, 0),
+            function(state)
+                AutoSkillState[key] = state
+            end, 
+            false, 
+            Color3.fromRGB(0,170,255), 
+            Color3.fromRGB(60,60,62),
+            UDim2.new(0, 44, 0, 24)
+        )
     end
 end
 task.spawn(function()
@@ -388,12 +462,15 @@ task.spawn(function()
     end
 end)
 
+-- ======================================================
+-- 2. AUTO NPC
+-- ======================================================
 local AutoNPCPanel = panels["AutoNPC"]
 do 
     local p = AutoNPCPanel 
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 26)
+    label.Size = UDim2.new(1, 0, 0, 24)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -402,23 +479,28 @@ do
     label.Text = "AUTO FARM NPC (Tự động đánh quái)"
     y = y + 30
 
-    local masterBtn = Instance.new("TextButton", p)
-    masterBtn.Size = UDim2.new(0, 200, 0, 36)
-    masterBtn.Position = UDim2.new(0, 10, 0, y)
-    masterBtn.Text = "Auto Farm NPC: OFF"
-    masterBtn.Font = Enum.Font.GothamBold
-    masterBtn.TextSize = 14
-    masterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    masterBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) 
-    masterBtn.BorderSizePixel = 0
-    Instance.new("UICorner", masterBtn).CornerRadius = UDim.new(0, 6)
+    local lblMaster = Instance.new("TextLabel", p)
+    lblMaster.Size = UDim2.new(0, 150, 0, 24)
+    lblMaster.Position = UDim2.new(0, 10, 0, y)
+    lblMaster.BackgroundTransparency = 1
+    lblMaster.Font = Enum.Font.GothamBold
+    lblMaster.TextSize = 14
+    lblMaster.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lblMaster.TextXAlignment = Enum.TextXAlignment.Left
+    lblMaster.Text = "Auto Farm NPC"
 
-    masterBtn.MouseButton1Click:Connect(function()
-        AutoFarmNPC = not AutoFarmNPC
-        masterBtn.Text = "Auto Farm NPC: " .. (AutoFarmNPC and "ON" or "OFF")
-        masterBtn.BackgroundColor3 = AutoFarmNPC and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(150, 50, 50)
-    end)
-    y = y + 46
+    createToggleSwitch(
+        p, 
+        UDim2.new(0, 170, 0, y),
+        function(state)
+            AutoFarmNPC = state
+        end, 
+        AutoFarmNPC, 
+        Color3.fromRGB(0, 150, 255), 
+        Color3.fromRGB(150, 50, 50)
+    )
+
+    y = y + 40
 
     local lblRange = Instance.new("TextLabel", p)
     lblRange.Size = UDim2.new(0, 250, 0, 20)
@@ -439,7 +521,7 @@ do
     btnInfo.TextSize = 12
     btnInfo.TextColor3 = Color3.fromRGB(255, 170, 170)
     btnInfo.TextXAlignment = Enum.TextXAlignment.Left
-    btnInfo.Text = "CẦN LÀM: BẬT Auto Skills (Z, X, C, V) trong tab AutoFarm để sử dụng chiêu!"
+    btnInfo.Text = "LƯU Ý: Phải BẬT Auto Skills (Z, X, C, V) trong tab AutoFarm để auto farm sử dụng chiêu!"
     y = y + 50
 end
 
@@ -494,34 +576,43 @@ task.spawn(function()
     end
 end)
 
-
+-- ======================================================
+-- 3. AUTO HAKI
+-- ======================================================
 local AutoHakiPanel = panels["AutoHaki"]
 do
     local p = AutoHakiPanel 
+    local y = 6
     local lbl=Instance.new("TextLabel",p)
-    lbl.Size=UDim2.new(1,0,0,26)
-    lbl.Position=UDim2.new(0,0,0,6)
+    lbl.Size=UDim2.new(1,0,0,24)
+    lbl.Position=UDim2.new(0,0,0,y)
     lbl.BackgroundTransparency=1
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 14
     lbl.TextColor3 = Color3.fromRGB(220,220,220)
     lbl.Text="Auto Haki (spam R)"
+    y = y + 30
+    
+    local lblToggle = Instance.new("TextLabel", p)
+    lblToggle.Size = UDim2.new(0, 100, 0, 24)
+    lblToggle.Position = UDim2.new(0, 10, 0, y)
+    lblToggle.BackgroundTransparency = 1
+    lblToggle.Font = Enum.Font.GothamBold
+    lblToggle.TextSize = 14
+    lblToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lblToggle.TextXAlignment = Enum.TextXAlignment.Left
+    lblToggle.Text = "Kích hoạt Haki"
 
-    local btn=Instance.new("TextButton",p)
-    btn.Size=UDim2.new(0,140,0,36)
-    btn.Position=UDim2.new(0,10,0,40)
-    btn.Text="R OFF"
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    btn.TextColor3 = Color3.fromRGB(230,230,230)
-    btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-    btn.BorderSizePixel = 0
-    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
-    btn.MouseButton1Click:Connect(function()
-        AutoHakiState=not AutoHakiState
-        btn.Text="R "..(AutoHakiState and "ON" or "OFF")
-        btn.BackgroundColor3=AutoHakiState and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
-    end)
+    createToggleSwitch(
+        p, 
+        UDim2.new(0, 120, 0, y),
+        function(state)
+            AutoHakiState = state
+        end, 
+        AutoHakiState, 
+        Color3.fromRGB(0,170,255), 
+        Color3.fromRGB(60,60,62)
+    )
 end
 
 task.spawn(function()
@@ -537,13 +628,15 @@ task.spawn(function()
     end
 end)
 
-
+-- ======================================================
+-- 4. FRUIT FINDER/PICKUP
+-- ======================================================
 local FruitPanel = panels["Fruit"]
 do
     local p = FruitPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 26)
+    label.Size = UDim2.new(1, 0, 0, 24)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -564,42 +657,54 @@ do
     listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
     
-    local buttonHeight = 34
+    local buttonHeight = 32
     local spacing = 10
+    local fruitCount = 0
 
     for i, fruitName in ipairs(RF_RareDevilfruit) do
-        local btn = Instance.new("TextButton", scrollFrame)
-        btn.Size = UDim2.new(0, 150, 0, buttonHeight)
-        btn.Text = fruitName .. ": OFF"
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 14
-        btn.TextColor3 = Color3.fromRGB(230, 230, 230)
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 62)
-        btn.BorderSizePixel = 0
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-        
-        btn.LayoutOrder = i
+        local container = Instance.new("Frame", scrollFrame)
+        container.Size = UDim2.new(1, -10, 0, buttonHeight)
+        container.BackgroundTransparency = 1
+        container.LayoutOrder = i
 
-        btn.MouseButton1Click:Connect(function()
-            local state = not AutoFruitState[fruitName]
-            AutoFruitState[fruitName] = state
-            btn.Text = fruitName .. ": " .. (state and "ON" or "OFF")
-            btn.BackgroundColor3 = state and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(60, 60, 62)
-        end)
+        local nameLabel = Instance.new("TextLabel", container)
+        nameLabel.Size = UDim2.new(0, 120, 1, 0)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.Text = fruitName
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 14
+        nameLabel.TextColor3 = Color3.fromRGB(230, 230, 230)
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+        createToggleSwitch(
+            container, 
+            UDim2.new(0, 130, 0, 4),
+            function(state)
+                AutoFruitState[fruitName] = state
+            end, 
+            AutoFruitState[fruitName], 
+            Color3.fromRGB(255, 170, 0), 
+            Color3.fromRGB(60, 60, 62),
+            UDim2.new(0, 44, 0, 24)
+        )
+        fruitCount = fruitCount + 1
     end
     
-    local numItems = #RF_RareDevilfruit
-    local totalHeight = numItems * (buttonHeight + spacing) + spacing 
+    local totalHeight = fruitCount * (buttonHeight + spacing) + spacing 
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 
 end
 
+-- ======================================================
+-- 5. AUTO DROP
+-- ======================================================
 local DropPanel = panels["Drop"]
 do
     local p = DropPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 26)
+    label.Size = UDim2.new(1, 0, 0, 24)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -608,23 +713,28 @@ do
     label.Text = "AUTO DROP ITEMS"
     y = y + 30
 
-    local dropBtn = Instance.new("TextButton", p)
-    dropBtn.Size = UDim2.new(0, 280, 0, 36)
-    dropBtn.Position = UDim2.new(0, 10, 0, y)
-    dropBtn.Text = "Auto Drop Item (Đã chọn lọc): OFF"
-    dropBtn.Font = Enum.Font.GothamBold
-    dropBtn.TextSize = 14
-    dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dropBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 150) 
-    dropBtn.BorderSizePixel = 0
-    Instance.new("UICorner", dropBtn).CornerRadius = UDim.new(0, 6)
+    local lblToggle = Instance.new("TextLabel", p)
+    lblToggle.Size = UDim2.new(0, 120, 0, 24)
+    lblToggle.Position = UDim2.new(0, 10, 0, y)
+    lblToggle.BackgroundTransparency = 1
+    lblToggle.Font = Enum.Font.GothamBold
+    lblToggle.TextSize = 14
+    lblToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lblToggle.TextXAlignment = Enum.TextXAlignment.Left
+    lblToggle.Text = "Tự động Drop"
     
-    dropBtn.MouseButton1Click:Connect(function()
-        AutoDropItem = not AutoDropItem
-        dropBtn.Text = "Auto Drop Item (Đã chọn lọc): " .. (AutoDropItem and "ON" or "OFF")
-        dropBtn.BackgroundColor3 = AutoDropItem and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 150)
-    end)
-    y = y + 46
+    createToggleSwitch(
+        p, 
+        UDim2.new(0, 130, 0, y),
+        function(state)
+            AutoDropItem = state
+        end, 
+        AutoDropItem, 
+        Color3.fromRGB(0, 170, 255), 
+        Color3.fromRGB(50, 50, 150)
+    )
+
+    y = y + 40
     
     local note = Instance.new("TextLabel", p)
     note.Size = UDim2.new(1, -20, 0, 80)
@@ -635,35 +745,8 @@ do
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    note.Text = "Chức năng này sẽ tìm và drop BẤT KỲ Tool/Fruit nào trong túi đồ có tên nằm trong danh sách đen (Apple, Cantaloup, Cantaloupe, Banana, Green Apple, Coconut, Pumpkin, Prickly Pear, Melon). Cơ chế: Ép trang bị -> Backspace."
+    note.Text = "Chức năng này sẽ tìm và drop BẤT KỲ Tool/Fruit nào trong túi đồ có tên: Apple, Cantaloup, Cantaloupe, Banana, Green Apple, Coconut, Pumpkin, Prickly Pear, Melon. Cơ chế: Ép trang bị -> Backspace."
     y = y + 90 
-end
-
-local SettingsPanel = panels["Settings"]
-do
-    local p = SettingsPanel
-    local y = 6
-    local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 26)
-    label.Position = UDim2.new(0, 0, 0, y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Text = "Các Thiết Lập Khác"
-    y = y + 30
-    
-    local note = Instance.new("TextLabel", p)
-    note.Size = UDim2.new(1, -20, 0, 40)
-    note.Position = UDim2.new(0, 10, 0, y)
-    note.BackgroundTransparency = 1
-    note.Font = Enum.Font.Gotham
-    note.TextSize = 12
-    note.TextColor3 = Color3.fromRGB(170, 255, 170)
-    note.TextXAlignment = Enum.TextXAlignment.Left
-    note.TextWrap = true
-    note.Text = "Các tùy chọn Auto Drop đã được chuyển sang tab 'Drop'."
-    y = y + 50
 end
 
 task.spawn(function()
@@ -688,6 +771,36 @@ task.spawn(function()
     end
 end)
 
+-- ======================================================
+-- 6. SETTINGS (Not yet implemented)
+-- ======================================================
+local SettingsPanel = panels["Settings"]
+do
+    local p = SettingsPanel
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, 26)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Text = "Các Thiết Lập Khác"
+    y = y + 30
+    
+    local note = Instance.new("TextLabel", p)
+    note.Size = UDim2.new(1, -20, 0, 40)
+    note.Position = UDim2.new(0, 10, 0, y)
+    note.BackgroundTransparency = 1
+    note.Font = Enum.Font.Gotham
+    note.TextSize = 12
+    note.TextColor3 = Color3.fromRGB(170, 255, 170)
+    note.TextXAlignment = Enum.TextXAlignment.Left
+    note.TextWrap = true
+    note.Text = "Hiện chưa có thiết lập mở rộng nào."
+    y = y + 50
+end
+
 
 local foot=Instance.new("TextLabel")
 foot.Size=UDim2.new(1,0,0,18)
@@ -696,7 +809,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.4 (Drop List Fix)"
+foot.Text="NTBA • Fruit Hub v16.5 (Final UI Update)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.4 - Cantaloupe Added to Drop List.")
+print("NTBA Fruit Hub v16.5 - UI Transparency and Toggle Switch Applied.")
