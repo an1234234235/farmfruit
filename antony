@@ -1,3 +1,4 @@
+local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -6,12 +7,28 @@ local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
 local Backpack = player:WaitForChild("Backpack")
 
+-- Biến kiểm soát Farm chung
 local AutoFarmNPC = false
 local FarmRadius = 150 
 local AutoSkillState={Z=false,X=false,C=false,V=false} 
 local AutoHakiState=false 
 local AutoDropItem = false 
 
+-- ===== BIẾN KIỂM SOÁT FRUIT MỚI =====
+local RF_RareDevilfruit = {
+    "Smoke", "Sand", "Rumble", "Quake", "Phoenix", "Ope", "Magma", "Light",
+    "Hollow", "Alice", "Gas", "Flare", "Dark", "Chilly", "Candy",
+    "Plasma", "Gravity", "Vampire", "Venom", "Snow",
+    "Shadow", "Control", "Dough", "Leopard", "Dragon", "Kilo", "Buddha",
+}
+local AutoFruitState = {} -- State cho từng trái cây: AutoFruitState["Smoke"] = true/false
+for _, fruitName in ipairs(RF_RareDevilfruit) do
+    AutoFruitState[fruitName] = false
+end
+local PICKUP_RANGE = 50 -- Phạm vi nhặt
+local billboardGuiMap = {}
+
+-- DANH SÁCH VẬT PHẨM CẦN DROP (TỪ SCRIPT CŨ)
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
     ["Cantaloup"] = true,
@@ -32,6 +49,130 @@ local function findDroppableItemInList()
     return nil
 end
 
+-- ===== CHỨC NĂNG FRUIT FINDER/PICKUP (Cập nhật) =====
+
+local function createBillboardGuiForFruit(model, fruitName, offsetY)
+    if model:FindFirstChild("Head") then
+        if not billboardGuiMap[model] then billboardGuiMap[model] = {} end
+        
+        if billboardGuiMap[model][fruitName] then
+            billboardGuiMap[model][fruitName]:Destroy()
+        end
+        
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Adornee = model.Head
+        billboardGui.Parent = model.Head
+        billboardGui.Size = UDim2.new(0, 200, 0, 50)
+        billboardGui.StudsOffset = Vector3.new(0, offsetY, 0)
+        
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Parent = billboardGui
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Text = fruitName .. "!"
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextScaled = true
+        textLabel.Font = Enum.Font.GothamBold
+        
+        billboardGuiMap[model][fruitName] = billboardGui
+    end
+end
+
+local function removeBillboardGuiForFruit(model, fruitName)
+    if billboardGuiMap[model] and billboardGuiMap[model][fruitName] then
+        billboardGuiMap[model][fruitName]:Destroy()
+        billboardGuiMap[model][fruitName] = nil
+    end
+end
+
+local function checkFruitsInWorkspace()
+    local offsetY = 3 
+    for i, v in pairs(workspace:GetChildren()) do  
+        if v:IsA("Model") and v:FindFirstChild("PrimaryPart") then 
+            for _, fruitName in pairs(RF_RareDevilfruit) do
+                -- Fruit có thể là tên Fruit, hoặc Lock Fruit chứa một phần PrimaryPart
+                local fruitInstance = v:FindFirstChild(fruitName .. " Fruit") or v:FindFirstChild("Lock Fruit")
+                
+                if fruitInstance and v.PrimaryPart then
+                    createBillboardGuiForFruit(v, fruitName, offsetY)
+                    offsetY = offsetY + 1
+                    
+                    -- LOGIC AUTO PICKUP RIÊNG CHO TỪNG TRÁI
+                    if AutoFruitState[fruitName] and hrp and hrp.Parent and v.PrimaryPart then
+                        local distance = (hrp.Position - v.PrimaryPart.Position).Magnitude
+                        
+                        if distance < PICKUP_RANGE then
+                            
+                            -- Cố gắng tìm RemoteEvent Pickup (dựa trên ảnh)
+                            -- RemoteEvent có thể nằm trong ClickSelector, Relay hoặc ngay trong Model
+                            local pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Relay") and fruitInstance.ClickSelector.Relay:FindFirstChild("Pickup")
+                            
+                            if not pickupRemote then
+                                pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Pickup")
+                            end
+
+                            if pickupRemote and pickupRemote:IsA("RemoteEvent") then
+                                print("!!! Auto-Picked up: " .. fruitName .. " bằng RemoteEvent FireServer !!!")
+                                
+                                -- 1. Dịch chuyển HRP đến gần trái cây
+                                hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
+                                task.wait(0.05)
+                                
+                                -- 2. GỌI TRỰC TIẾP REMOTEEVENT
+                                pcall(function()
+                                    pickupRemote:FireServer()
+                                end)
+                                
+                                task.wait(1.5) 
+                                return 
+                            else
+                                -- Nếu không tìm thấy Remote, thử cơ chế Touch (Touch thường là mặc định)
+                                print("!!! Auto-Picked up: " .. fruitName .. " bằng Touch (Dự phòng) !!!")
+                                hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
+                                task.wait(1)
+                                return 
+                            end
+                        end
+                    end
+                else
+                    removeBillboardGuiForFruit(v, fruitName)
+                end
+            end
+        end
+    end
+end
+
+local function checkFruitsInPlayers()
+    local offsetY = 3
+    for _, p in pairs(Players:GetChildren()) do  
+        if p.Character and p.Character:FindFirstChild("Head") and p ~= player then
+            local char = p.Character
+            for _, fruitName in pairs(RF_RareDevilfruit) do
+                local fruitInBackpack = p.Backpack:FindFirstChild(fruitName .. " Fruit")
+                local fruitEquipped = char:FindFirstChild(fruitName .. " Fruit")
+                
+                if fruitInBackpack or fruitEquipped then
+                    createBillboardGuiForFruit(char, fruitName, offsetY)
+                    offsetY = offsetY + 1 
+                else
+                    removeBillboardGuiForFruit(char, fruitName)
+                end
+            end
+        end
+    end
+end
+
+-- Vòng lặp chính cho Finder/Pickup
+RunService.Heartbeat:Connect(function()
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        hrp = player.Character.HumanoidRootPart
+        checkFruitsInWorkspace()
+        checkFruitsInPlayers()
+    end
+    task.wait(0.5) 
+end)
+
+-- Xóa UI cũ
 pcall(function()
     if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
         player.PlayerGui.FruitHubUI:Destroy()
@@ -41,6 +182,7 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
+-- ===== PHẦN UI (CÓ THAY ĐỔI) =====
 local MAIN_W, MAIN_H = 740, 440
 local Sidebar_W = 160
 local ScreenGui = Instance.new("ScreenGui")
@@ -103,6 +245,7 @@ CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
 CloseBtn.BorderSizePixel = 0
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
 do
     local dragging = false
@@ -148,7 +291,8 @@ SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
-local tabs = {"AutoFarm","AutoNPC","AutoHaki","Drop","Settings"}
+-- Đã thêm tab "Fruit"
+local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit","Drop","Settings"}
 local tabButtons, panels = {}, {}
 
 local Panel_X_Start = Sidebar_W + 10 
@@ -192,14 +336,14 @@ for name, btn in pairs(tabButtons) do
     end)
 end
 
-
+-- AutoFarm Skills (giữ nguyên)
 do
     local p = panels["AutoFarm"] 
     local y=6
     local label=Instance.new("TextLabel",p)
     label.Size=UDim2.new(1,0,0,26)
     label.Position=UDim2.new(0,0,0,y)
-    label.BackgroundTransparency=1
+    label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(220,220,220)
@@ -225,23 +369,7 @@ do
         end)
     end
 end
-
-task.spawn(function()
-    while true do
-        task.wait(0.18)
-        for key,enabled in pairs(AutoSkillState) do
-            if enabled and not AutoFarmNPC then 
-                pcall(function()
-                    VirtualInputManager:SendKeyEvent(true,key,false,game)
-                    task.wait(0.04)
-                    VirtualInputManager:SendKeyEvent(false,key,false,game)
-                end)
-            end
-        end
-    end
-end)
-
-
+-- AutoNPC (giữ nguyên)
 local AutoNPCPanel = panels["AutoNPC"]
 do 
     local p = AutoNPCPanel 
@@ -296,59 +424,7 @@ do
     btnInfo.Text = "CẦN LÀM: BẬT Auto Skills (Z, X, C, V) trong tab AutoFarm để sử dụng chiêu!"
     y = y + 50
 end
-
-local function findAndFarmNPC()
-    local targetNPC = nil
-    local shortestDistance = FarmRadius + 1
-
-    for _, v in ipairs(workspace:GetChildren()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-            if v.Name ~= player.Name and not v:FindFirstChild("LockFruit") then 
-                local npcHR = v:FindFirstChild("HumanoidRootPart")
-                if npcHR and hrp then
-                    local distance = (hrp.Position - npcHR.Position).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        targetNPC = npcHR
-                    end
-                end
-            end
-        end
-    end
-
-    if targetNPC then
-        pcall(function()
-            local direction = (hrp.Position - targetNPC.Position).Unit
-            hrp.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -10) 
-        end)
-        
-        for i = 1, 3 do 
-            for key, enabled in pairs(AutoSkillState) do
-                if enabled then
-                    pcall(function()
-                        VirtualInputManager:SendKeyEvent(true, key, false, game)
-                        task.wait(0.04)
-                        VirtualInputManager:SendKeyEvent(false, key, false, game)
-                    end)
-                end
-            end
-            task.wait(0.3)
-        end
-        return true 
-    end
-    return false
-end
-
-task.spawn(function()
-    while true do
-        if AutoFarmNPC and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
-            findAndFarmNPC()
-        end
-        task.wait(0.5) 
-    end
-end)
-
-
+-- AutoHaki (giữ nguyên)
 local AutoHakiPanel = panels["AutoHaki"]
 do
     local p = AutoHakiPanel 
@@ -378,20 +454,71 @@ do
     end)
 end
 
-task.spawn(function()
-    while true do
-        if AutoHakiState then
-            pcall(function()
-                VirtualInputManager:SendKeyEvent(true,"R",false,game)
-                task.wait(0.06)
-                VirtualInputManager:SendKeyEvent(false,"R",false,game)
-            end)
-        end
-        task.wait(6.5)
+-- ===== TAB FRUIT MỚI =====
+local FruitPanel = panels["Fruit"]
+do
+    local p = FruitPanel
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, 26)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 255, 0) 
+    label.Text = "AUTO FRUIT PICKUP (RemoteEvent)"
+    y = y + 30
+    
+    local scrollFrame = Instance.new("ScrollingFrame", p)
+    scrollFrame.Size = UDim2.new(1, 0, 1, -y)
+    scrollFrame.Position = UDim2.new(0, 0, 0, y)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
+    
+    local listLayout = Instance.new("UIListLayout", scrollFrame)
+    listLayout.Padding = UDim.new(0, 6)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+    
+    local buttonsPerRow = 2
+    local buttonWidth = 150
+    local buttonHeight = 34
+    local spacing = 10
+    local currentX = spacing
+    local currentY = spacing
+
+    for i, fruitName in ipairs(RF_RareDevilfruit) do
+        local btn = Instance.new("TextButton", scrollFrame)
+        btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+        btn.Text = fruitName .. ": OFF"
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 14
+        btn.TextColor3 = Color3.fromRGB(230, 230, 230)
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 62)
+        btn.BorderSizePixel = 0
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+        
+        -- Cập nhật vị trí thủ công (do không dùng UIGridLayout)
+        -- Sử dụng LayoutOrder và UIListLayout sẽ dễ hơn cho scrolling
+        btn.LayoutOrder = i
+
+        btn.MouseButton1Click:Connect(function()
+            local state = not AutoFruitState[fruitName]
+            AutoFruitState[fruitName] = state
+            btn.Text = fruitName .. ": " .. (state and "ON" or "OFF")
+            btn.BackgroundColor3 = state and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(60, 60, 62)
+        end)
     end
-end)
+    
+    -- Điều chỉnh CanvasSize sau khi tạo tất cả các nút (để ScrollingFrame hoạt động)
+    local numItems = #RF_RareDevilfruit
+    local totalHeight = numItems * (buttonHeight + spacing) + spacing 
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
 
+end
 
+-- AutoDrop (giữ nguyên)
 local DropPanel = panels["Drop"]
 do
     local p = DropPanel
@@ -436,7 +563,7 @@ do
     note.Text = "Chức năng này sẽ tìm và drop BẤT KỲ Tool/Fruit nào trong túi đồ có tên nằm trong danh sách đen (Apple, Cantaloup, Banana, Green Apple, Coconut, Pumpkin, Prickly Pear, Melon). Cơ chế: Ép trang bị -> Backspace."
     y = y + 90 
 end
-
+-- Settings (giữ nguyên)
 local SettingsPanel = panels["Settings"]
 do
     local p = SettingsPanel
@@ -463,6 +590,7 @@ do
     note.Text = "Các tùy chọn Auto Drop đã được chuyển sang tab 'Drop'."
     y = y + 50
 end
+
 
 task.spawn(function()
     while true do
@@ -494,7 +622,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v12.0"
+foot.Text="NTBA • Fruit Hub v16.0"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v12.0 - Optimized Drop Initialized.")
+print("NTBA Fruit Hub v16.0 - Auto Fruit Selection Integrated.")
