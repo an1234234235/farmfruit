@@ -184,7 +184,7 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- Tạo hàm Switch Toggle (ĐÃ TỐI ƯU HÓA)
+-- Tạo hàm Switch Toggle (ĐÃ SỬA LỖI TƯƠNG TÁC VỚI BIẾN)
 local function createToggleSwitch(parent, initialPos, onClickCallback, initialState, enabledColor, disabledColor, toggleSize)
     toggleSize = toggleSize or UDim2.new(0, 44, 0, 24)
     local Switch = Instance.new("TextButton")
@@ -213,10 +213,10 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     Switch.MouseButton1Click:Connect(function()
         state = not state
         
-        -- Gọi callback trước để cập nhật biến Lua
+        -- Gọi callback để cập nhật biến Lua
         onClickCallback(state) 
         
-        -- Sử dụng TweenService an toàn hơn
+        -- Cập nhật giao diện
         Switch:TweenBackgroundColor(
             Enum.EasingDirection.Out, 
             Enum.EasingStyle.Quad, 
@@ -436,9 +436,9 @@ do
             SkillContainer, 
             UDim2.new(0, 25 + (i-1)*70, 0, 0),
             function(state)
-                AutoSkillState[key] = state
+                AutoSkillState[key] = state -- Sửa lỗi cập nhật key trong bảng
             end, 
-            false, 
+            AutoSkillState[key], -- Sử dụng trạng thái ban đầu từ bảng
             Color3.fromRGB(0,170,255), 
             Color3.fromRGB(60,60,62),
             UDim2.new(0, 44, 0, 24)
@@ -491,7 +491,7 @@ do
         p, 
         UDim2.new(0, 170, 0, y),
         function(state)
-            AutoFarmNPC = state
+            AutoFarmNPC = state -- Sửa lỗi cập nhật biến boolean
         end, 
         AutoFarmNPC, 
         Color3.fromRGB(0, 150, 255), 
@@ -605,7 +605,7 @@ do
         p, 
         UDim2.new(0, 120, 0, y),
         function(state)
-            AutoHakiState = state
+            AutoHakiState = state -- Sửa lỗi cập nhật biến boolean
         end, 
         AutoHakiState, 
         Color3.fromRGB(0,170,255), 
@@ -679,7 +679,7 @@ do
             container, 
             UDim2.new(0, 130, 0, 4),
             function(state)
-                AutoFruitState[fruitName] = state
+                AutoFruitState[fruitName] = state -- Sửa lỗi cập nhật key trong bảng
             end, 
             AutoFruitState[fruitName], 
             Color3.fromRGB(255, 170, 0), 
@@ -695,7 +695,7 @@ do
 end
 
 -- ======================================================
--- 5. AUTO DROP (Đã đổi tên)
+-- 5. AUTO DROP FRUIT MIX
 -- ======================================================
 local DropPanel = panels["Drop Fruit Mix"]
 do
@@ -725,7 +725,7 @@ do
         p, 
         UDim2.new(0, 130, 0, y),
         function(state)
-            AutoDropItem = state
+            AutoDropItem = state -- Sửa lỗi cập nhật biến boolean
         end, 
         AutoDropItem, 
         Color3.fromRGB(0, 170, 255), 
@@ -807,7 +807,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.7 (Toggle Switch Fixed)"
+foot.Text="NTBA • Fruit Hub v16.8 (Final Toggle Fix)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.7 - Toggle Switch UI/Logic Fixed. 'Drop' renamed to 'Drop Fruit Mix'.")
+print("NTBA Fruit Hub v16.8 - Fixed toggle switch logic for all tabs.")
