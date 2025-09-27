@@ -82,6 +82,36 @@ local function removeBillboardGuiForFruit(model, fruitName)
     end
 end
 
+-- LOGIC CỐ ĐỊNH: Tách Teleport và Pickup ra một hàm riêng để đảm bảo tốc độ
+local function pickUpFruit(v, fruitName, pickupRemote)
+    -- Sử dụng Coroutine.wrap để thực thi nhanh chóng, tránh bị chặn
+    coroutine.wrap(function()
+        if hrp and hrp.Parent and v.PrimaryPart then
+            local distance = (hrp.Position - v.PrimaryPart.Position).Magnitude
+            
+            if distance < PICKUP_RANGE then
+                
+                print("!!! Teleporting to fruit: " .. fruitName .. " !!!")
+                hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
+                task.wait(0.05)
+                
+                if pickupRemote and pickupRemote:IsA("RemoteEvent") then
+                    print("!!! Auto-Picked up: " .. fruitName .. " bằng RemoteEvent FireServer !!!")
+                    pcall(function()
+                        pickupRemote:FireServer()
+                    end)
+                else
+                    print("!!! Auto-Picked up: " .. fruitName .. " bằng Touch (Dự phòng) !!!")
+                    -- Touch pickup (chạm) thường được thực hiện sau khi tele
+                end
+                
+                task.wait(1.5) 
+                return 
+            end
+        end
+    end)()
+end
+
 local function checkFruitsInWorkspace()
     local offsetY = 3 
     for i, v in pairs(workspace:GetChildren()) do  
@@ -94,34 +124,15 @@ local function checkFruitsInWorkspace()
                     offsetY = offsetY + 1
                     
                     if AutoFruitState[fruitName] and hrp and hrp.Parent and v.PrimaryPart then
-                        local distance = (hrp.Position - v.PrimaryPart.Position).Magnitude
                         
-                        if distance < PICKUP_RANGE then
-                            
-                            local pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Relay") and fruitInstance.ClickSelector.Relay:FindFirstChild("Pickup")
-                            
-                            if not pickupRemote then
-                                pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Pickup")
-                            end
+                        local pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Relay") and fruitInstance.ClickSelector.Relay:FindFirstChild("Pickup")
+                        if not pickupRemote then
+                            pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Pickup")
+                        end
 
-                            if pickupRemote and pickupRemote:IsA("RemoteEvent") then
-                                print("!!! Auto-Picked up: " .. fruitName .. " bằng RemoteEvent FireServer !!!")
-                                
-                                hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
-                                task.wait(0.05)
-                                
-                                pcall(function()
-                                    pickupRemote:FireServer()
-                                end)
-                                
-                                task.wait(1.5) 
-                                return 
-                            else
-                                print("!!! Auto-Picked up: " .. fruitName .. " bằng Touch (Dự phòng) !!!")
-                                hrp.CFrame = v.PrimaryPart.CFrame * CFrame.new(0, 0, -2) 
-                                task.wait(1)
-                                return 
-                            end
+                        if pickupRemote and pickupRemote:IsA("RemoteEvent") then
+                            pickUpFruit(v, fruitName, pickupRemote)
+                            -- Không cần return, để các trái khác vẫn được kiểm tra
                         end
                     end
                 else
@@ -152,14 +163,18 @@ local function checkFruitsInPlayers()
     end
 end
 
-RunService.Heartbeat:Connect(function()
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        hrp = player.Character.HumanoidRootPart
-        checkFruitsInWorkspace()
-        checkFruitsInPlayers()
+-- LOGIC CỐ ĐỊNH: Tách vòng lặp Fruit Finder ra riêng (RẤT QUAN TRỌNG)
+task.spawn(function()
+    while true do
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            hrp = player.Character.HumanoidRootPart
+            checkFruitsInWorkspace()
+            checkFruitsInPlayers()
+        end
+        task.wait(0.5) -- Kiểm tra trái cây 2 lần/giây
     end
-    task.wait(0.5) 
 end)
+
 
 pcall(function()
     if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
@@ -233,7 +248,6 @@ CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
 CloseBtn.BorderSizePixel = 0
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
--- LOGIC FIX LỖI TẮT HOÀN TOÀN
 CloseBtn.MouseButton1Click:Connect(function() 
     ScreenGui:Destroy() 
     script:Destroy() 
@@ -682,7 +696,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.2"
+foot.Text="NTBA • Fruit Hub v16.3 (Fruit Fix)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.2 - Close Button Fixed and Activated.")
+print("NTBA Fruit Hub v16.3 - Fruit Finder/Pickup/Teleport Fix Applied.")
