@@ -28,11 +28,10 @@ end
 local PICKUP_RANGE = 50 
 local billboardGuiMap = {}
 
--- Sửa đổi chính ở đây: Thêm "Cantaloupe"
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
-    ["Cantaloup"] = true, -- Giữ lại, đề phòng
-    ["Cantaloupe"] = true, -- Đã thêm quả Cantaloupe
+    ["Cantaloup"] = true,
+    ["Cantaloupe"] = true, 
     ["Banana"] = true,
     ["Green Apple"] = true,
     ["Coconut"] = true,
@@ -355,7 +354,7 @@ do
     y=y+30
     
     local x_start = 10
-    local spacing = (Panel_W - (100 * 4 + x_start * 2)) / 3 -- Tự động căn chỉnh khoảng cách
+    local spacing = (Panel_W - (100 * 4 + x_start * 2)) / 3
     
     for i,key in ipairs({"Z","X","C","V"}) do
         local btn=Instance.new("TextButton",p)
@@ -563,7 +562,7 @@ do
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
     
     local listLayout = Instance.new("UIListLayout", scrollFrame)
-    listLayout.Padding = UDim.new(0, 5) -- Giảm padding
+    listLayout.Padding = UDim.new(0, 5) 
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
     listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
     listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
@@ -572,13 +571,19 @@ do
     local spacing = 5
     local buttonWidth = (Panel_W - 10) / 2 - 5 -- Cố gắng sắp xếp 2 cột
     local totalHeight = 0
-    local currentX = 5
     local currentY = 5
-    local isFirstColumn = true
     
-    local function createFruitButton(fruitName, i)
-        local btn = Instance.new("TextButton", scrollFrame)
+    for i, fruitName in ipairs(RF_RareDevilfruit) do
+        local btn = Instance.new("TextButton")
+        btn.Parent = scrollFrame
         btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+        
+        -- Sắp xếp 2 cột
+        local columnIndex = (i - 1) % 2
+        local rowIndex = math.floor((i - 1) / 2)
+        
+        btn.Position = UDim2.new(0, 5 + columnIndex * (buttonWidth + spacing*2), 0, 5 + rowIndex * (buttonHeight + spacing))
+        
         btn.Text = fruitName .. ": OFF"
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 13
@@ -587,15 +592,8 @@ do
         btn.BorderSizePixel = 0
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
         
-        if isFirstColumn then
-            btn.Position = UDim2.new(0, currentX, 0, currentY)
-            currentX = currentX + buttonWidth + spacing
-            isFirstColumn = false
-        else
-            btn.Position = UDim2.new(0, currentX, 0, currentY)
-            currentX = 5
-            currentY = currentY + buttonHeight + spacing
-            isFirstColumn = true
+        if columnIndex == 0 then
+            currentY = btn.Position.Y.Offset
         end
 
         btn.MouseButton1Click:Connect(function()
@@ -606,17 +604,9 @@ do
         end)
     end
     
-    for i, fruitName in ipairs(RF_RareDevilfruit) do
-        createFruitButton(fruitName, i)
-    end
-    
-    if isFirstColumn then
-        totalHeight = currentY
-    else
-        totalHeight = currentY + buttonHeight + spacing
-    end
-    
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10) -- Thêm 10 để cuộn thoải mái
+    local numRows = math.ceil(#RF_RareDevilfruit / 2)
+    totalHeight = numRows * (buttonHeight + spacing) + spacing 
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10) 
 
 end
 
