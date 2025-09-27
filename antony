@@ -10,7 +10,7 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local TweenService = game:GetService("TweenService") -- Giữ lại cho TweenPosition
+local TweenService = game:GetService("TweenService") 
 local player = Players.LocalPlayer
 local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
@@ -185,15 +185,14 @@ local PlayerGui = player:WaitForChild("PlayerGui", 5)
 if not PlayerGui then return end 
 
 ---
-## Hàm Toggle Switch (Đã sửa lỗi)
+## Hàm Toggle Switch (Đã khôi phục logic đơn giản)
 ---
--- Tạo hàm Switch Toggle (ĐÃ SỬ DỤNG ATTRIBUTES VÀ XÓA TWEEN MÀU)
+-- Tạo hàm Switch Toggle (Khôi phục logic ban đầu, chỉ thay đổi biến và UI trực tiếp)
 local function createToggleSwitch(parent, initialPos, onClickCallback, initialState, enabledColor, disabledColor, toggleSize)
     toggleSize = toggleSize or UDim2.new(0, 44, 0, 24)
     local Switch = Instance.new("TextButton")
     Switch.Size = toggleSize
     Switch.Position = initialPos
-    -- Không dùng Tween, thay đổi màu trực tiếp
     Switch.BackgroundColor3 = initialState and enabledColor or disabledColor
     Switch.BackgroundTransparency = 0.5 
     Switch.Text = ""
@@ -201,10 +200,6 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     Switch.Parent = parent
     Instance.new("UICorner", Switch).CornerRadius = UDim.new(0.5, 0)
     
-    -- Gán trạng thái vào Attribute để truy cập an toàn hơn
-    Switch:SetAttribute("state", initialState) 
-    Switch:SetAttribute("isToggling", false) -- Cờ chống spam click
-
     local Slider = Instance.new("Frame")
     Slider.Size = UDim2.new(0, 18, 0, 18)
     Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -215,34 +210,23 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     local enabledPos = UDim2.new(1, -21, 0.5, -9) 
     local disabledPos = UDim2.new(0, 3, 0.5, -9)
     Slider.Position = initialState and enabledPos or disabledPos
-    
+
+    local state = initialState -- Sử dụng biến cục bộ (giống như logic lỗi ban đầu)
     local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
     Switch.MouseButton1Click:Connect(function()
-        coroutine.wrap(function()
-            if Switch:GetAttribute("isToggling") then return end -- Chặn click spam
-
-            Switch:SetAttribute("isToggling", true) 
-            local currentState = Switch:GetAttribute("state")
-            local newState = not currentState
-            
-            Switch:SetAttribute("state", newState) 
-            
-            -- Gọi callback để cập nhật biến Lua
-            onClickCallback(newState) 
-            
-            -- Cập nhật màu Nhanh (Không Tween màu)
-            Switch.BackgroundColor3 = newState and enabledColor or disabledColor
-            
-            -- Tween vị trí thanh trượt
-            local targetPos = newState and enabledPos or disabledPos
-            local tween = TweenService:Create(Slider, tweenInfo, {Position = targetPos})
-            
-            tween:Play()
-            tween.Completed:Wait() -- Chờ Tween hoàn thành trước khi cho phép click tiếp
-            
-            Switch:SetAttribute("isToggling", false)
-        end)()
+        state = not state
+        
+        -- Gọi callback để cập nhật biến Lua chính
+        onClickCallback(state) 
+        
+        -- Cập nhật giao diện Trực Tiếp
+        Switch.BackgroundColor3 = state and enabledColor or disabledColor
+        
+        -- Tween vị trí thanh trượt
+        local targetPos = state and enabledPos or disabledPos
+        local tween = TweenService:Create(Slider, tweenInfo, {Position = targetPos})
+        tween:Play()
     end)
     return Switch, Slider
 end
@@ -824,7 +808,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.9 (Final Toggle Fix: Attributes)"
+foot.Text="NTBA • Fruit Hub v17.0 (Restored Simple Toggle Logic)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.9 - Final toggle switch logic fixed using Attributes and direct color change.")
+print("NTBA Fruit Hub v17.0 - Restored simple toggle switch logic.")
