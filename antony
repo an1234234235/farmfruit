@@ -184,9 +184,9 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- ===== PHẦN UI (Kích thước đã thu nhỏ) =====
-local MAIN_W, MAIN_H = 600, 380 -- Kích thước Hub mới
-local Sidebar_W = 130 -- Kích thước Sidebar mới
+-- ===== PHẦN UI (Kích thước đã thu nhỏ & Độ mờ) =====
+local MAIN_W, MAIN_H = 600, 380
+local Sidebar_W = 130 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FruitHubUI"
 ScreenGui.ResetOnSpawn = false
@@ -197,6 +197,7 @@ Main.Name = "Main"
 Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
 Main.Position = UDim2.new(0.5, -MAIN_W/2, 0.12, 0) 
 Main.BackgroundColor3 = Color3.fromRGB(24,24,28)
+Main.BackgroundTransparency = 0.15 -- Làm mờ khung chính
 Main.BorderSizePixel = 0
 Main.Parent = ScreenGui
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0,12)
@@ -207,9 +208,10 @@ shadow.Thickness = 2
 shadow.Transparency = 0.6
 
 local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1,0,0,32) -- Giảm chiều cao TitleBar
+TitleBar.Size = UDim2.new(1,0,0,32) 
 TitleBar.Position = UDim2.new(0,0,0,0)
 TitleBar.BackgroundColor3 = Color3.fromRGB(32,32,36)
+TitleBar.BackgroundTransparency = 0.15 -- Làm mờ TitleBar
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0,12)
@@ -237,7 +239,7 @@ AuthorLabel.TextXAlignment = Enum.TextXAlignment.Right
 AuthorLabel.Parent = TitleBar
 
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0,30,0,24) -- Giảm kích thước nút đóng
+CloseBtn.Size = UDim2.new(0,30,0,24) 
 CloseBtn.Position = UDim2.new(1,-38,0,4)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(180,60,60)
 CloseBtn.Text = "X"
@@ -245,6 +247,7 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 13
 CloseBtn.TextColor3 = Color3.fromRGB(255,255,255)
 CloseBtn.BorderSizePixel = 0
+CloseBtn.BackgroundTransparency = 0.1 -- Giảm độ mờ của nút để dễ nhìn
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
 CloseBtn.MouseButton1Click:Connect(function() 
@@ -283,9 +286,10 @@ UserInputService.InputBegan:Connect(function(input,gpe)
 end)
 
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0,Sidebar_W,1,-32) -- Giảm kích thước Sidebar theo TitleBar mới
+Sidebar.Size = UDim2.new(0,Sidebar_W,1,-32) 
 Sidebar.Position = UDim2.new(0,0,0,32)
 Sidebar.BackgroundColor3 = Color3.fromRGB(36,36,38)
+Sidebar.BackgroundTransparency = 0.15 -- Làm mờ Sidebar
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
@@ -300,14 +304,15 @@ local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit","Drop","Settings"}
 local tabButtons, panels = {}, {}
 
 local Panel_X_Start = Sidebar_W + 10 
-local Panel_Y_Start = 32 + 10 -- Vị trí Panel Y theo TitleBar mới     
+local Panel_Y_Start = 32 + 10      
 local Panel_W = MAIN_W - Sidebar_W - 20 
-local Panel_H = MAIN_H - 32 - 20 -- Kích thước Panel H theo Main và TitleBar mới        
+local Panel_H = MAIN_H - 32 - 20        
 
 for i,name in ipairs(tabs) do
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,-10,0,32) -- Giảm kích thước nút Sidebar
+    btn.Size = UDim2.new(1,-10,0,32) 
     btn.BackgroundColor3 = Color3.fromRGB(44,44,46)
+    btn.BackgroundTransparency = 0.2 -- Làm mờ nút Sidebar
     btn.BorderSizePixel = 0
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 13
@@ -322,7 +327,7 @@ for i,name in ipairs(tabs) do
     panel.Name = name .. "Panel"
     panel.Size = UDim2.new(0, Panel_W, 0, Panel_H) 
     panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start) 
-    panel.BackgroundTransparency = 1
+    panel.BackgroundTransparency = 1 -- Nội dung Panel trong suốt
     panel.Visible = false
     panel.Parent = Main
     panels[name] = panel
@@ -330,12 +335,14 @@ end
 
 panels["AutoFarm"].Visible = true
 tabButtons["AutoFarm"].BackgroundColor3 = Color3.fromRGB(60,60,62)
+tabButtons["AutoFarm"].BackgroundTransparency = 0.1
 
 for name, btn in pairs(tabButtons) do
     btn.MouseButton1Click:Connect(function()
-        for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46) end
+        for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46); v.BackgroundTransparency = 0.2 end
         for _,p in pairs(panels) do p.Visible = false end
         btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
+        btn.BackgroundTransparency = 0.1 -- Đảm bảo nút được chọn nổi hơn
         panels[name].Visible = true
     end)
 end
@@ -358,13 +365,14 @@ do
     
     for i,key in ipairs({"Z","X","C","V"}) do
         local btn=Instance.new("TextButton",p)
-        btn.Size=UDim2.new(0,100,0,32) -- Giảm kích thước nút skill
+        btn.Size=UDim2.new(0,100,0,32) 
         btn.Position=UDim2.new(0,x_start+(i-1)*(100+spacing),0,y)
         btn.Text=key.." OFF"
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 14
         btn.TextColor3 = Color3.fromRGB(230,230,230)
         btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
+        btn.BackgroundTransparency = 0.15
         btn.BorderSizePixel = 0
         Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
         local state=false
@@ -373,6 +381,7 @@ do
             AutoSkillState[key]=state
             btn.Text=key..(state and " ON" or " OFF")
             btn.BackgroundColor3=state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
+            btn.BackgroundTransparency=state and 0.1 or 0.15
         end)
     end
 end
@@ -406,13 +415,14 @@ do
     y = y + 30
 
     local masterBtn = Instance.new("TextButton", p)
-    masterBtn.Size = UDim2.new(0, 200, 0, 32) -- Giảm kích thước nút
+    masterBtn.Size = UDim2.new(0, 200, 0, 32) 
     masterBtn.Position = UDim2.new(0, 10, 0, y)
     masterBtn.Text = "Auto Farm NPC: OFF"
     masterBtn.Font = Enum.Font.GothamBold
     masterBtn.TextSize = 14
     masterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     masterBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) 
+    masterBtn.BackgroundTransparency = 0.15
     masterBtn.BorderSizePixel = 0
     Instance.new("UICorner", masterBtn).CornerRadius = UDim.new(0, 6)
 
@@ -420,6 +430,7 @@ do
         AutoFarmNPC = not AutoFarmNPC
         masterBtn.Text = "Auto Farm NPC: " .. (AutoFarmNPC and "ON" or "OFF")
         masterBtn.BackgroundColor3 = AutoFarmNPC and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(150, 50, 50)
+        masterBtn.BackgroundTransparency = AutoFarmNPC and 0.1 or 0.15
     end)
     y = y + 42
 
@@ -511,19 +522,21 @@ do
     lbl.Text="Auto Haki (spam R)"
 
     local btn=Instance.new("TextButton",p)
-    btn.Size=UDim2.new(0,140,0,32) -- Giảm kích thước nút
+    btn.Size=UDim2.new(0,140,0,32) 
     btn.Position=UDim2.new(0,10,0,40)
     btn.Text="R OFF"
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 14
     btn.TextColor3 = Color3.fromRGB(230,230,230)
     btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
+    btn.BackgroundTransparency = 0.15
     btn.BorderSizePixel = 0
     Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
     btn.MouseButton1Click:Connect(function()
         AutoHakiState=not AutoHakiState
         btn.Text="R "..(AutoHakiState and "ON" or "OFF")
         btn.BackgroundColor3=AutoHakiState and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
+        btn.BackgroundTransparency=AutoHakiState and 0.1 or 0.15
     end)
 end
 
@@ -561,34 +574,36 @@ do
     scrollFrame.BackgroundTransparency = 1
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
     
-    local listLayout = Instance.new("UIListLayout", scrollFrame)
-    listLayout.Padding = UDim.new(0, 5) 
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    
-    local buttonHeight = 30 -- Giảm chiều cao nút
+    -- Tăng khoảng cách để tránh các nút chạm vào nhau (Giữ lại để căn chỉnh bằng tay 2 cột)
+    local buttonHeight = 30
     local spacing = 5
-    local buttonWidth = (Panel_W - 10) / 2 - 5 -- Cố gắng sắp xếp 2 cột
-    local totalHeight = 0
-    local currentY = 5
+    local buttonMargin = 10 -- Khoảng cách lề bên ngoài
+    local innerSpacing = 10 -- Khoảng cách giữa 2 cột
+    
+    -- Tính toán kích thước nút cho 2 cột
+    local buttonWidth = (Panel_W - (buttonMargin * 2) - innerSpacing) / 2
+    local currentY = buttonMargin
     
     for i, fruitName in ipairs(RF_RareDevilfruit) do
-        local btn = Instance.new("TextButton")
-        btn.Parent = scrollFrame
+        local btn = Instance.new("TextButton", scrollFrame)
         btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
         
         -- Sắp xếp 2 cột
         local columnIndex = (i - 1) % 2
         local rowIndex = math.floor((i - 1) / 2)
         
-        btn.Position = UDim2.new(0, 5 + columnIndex * (buttonWidth + spacing*2), 0, 5 + rowIndex * (buttonHeight + spacing))
+        -- Tính toán vị trí
+        local posX = buttonMargin + columnIndex * (buttonWidth + innerSpacing)
+        local posY = buttonMargin + rowIndex * (buttonHeight + spacing)
+
+        btn.Position = UDim2.new(0, posX, 0, posY)
         
         btn.Text = fruitName .. ": OFF"
         btn.Font = Enum.Font.GothamBold
         btn.TextSize = 13
         btn.TextColor3 = Color3.fromRGB(230, 230, 230)
         btn.BackgroundColor3 = Color3.fromRGB(60, 60, 62)
+        btn.BackgroundTransparency = 0.15
         btn.BorderSizePixel = 0
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
         
@@ -601,12 +616,13 @@ do
             AutoFruitState[fruitName] = state
             btn.Text = fruitName .. ": " .. (state and "ON" or "OFF")
             btn.BackgroundColor3 = state and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(60, 60, 62)
+            btn.BackgroundTransparency = state and 0.1 or 0.15
         end)
     end
     
     local numRows = math.ceil(#RF_RareDevilfruit / 2)
-    totalHeight = numRows * (buttonHeight + spacing) + spacing 
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight + 10) 
+    local totalHeight = numRows * (buttonHeight + spacing) + buttonMargin + spacing 
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight) 
 
 end
 
@@ -625,13 +641,14 @@ do
     y = y + 30
 
     local dropBtn = Instance.new("TextButton", p)
-    dropBtn.Size = UDim2.new(0, 280, 0, 32) -- Giảm kích thước nút
+    dropBtn.Size = UDim2.new(0, 280, 0, 32) 
     dropBtn.Position = UDim2.new(0, 10, 0, y)
     dropBtn.Text = "Auto Drop Item (Đã chọn lọc): OFF"
     dropBtn.Font = Enum.Font.GothamBold
     dropBtn.TextSize = 14
     dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     dropBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 150) 
+    dropBtn.BackgroundTransparency = 0.15
     dropBtn.BorderSizePixel = 0
     Instance.new("UICorner", dropBtn).CornerRadius = UDim.new(0, 6)
     
@@ -639,6 +656,7 @@ do
         AutoDropItem = not AutoDropItem
         dropBtn.Text = "Auto Drop Item (Đã chọn lọc): " .. (AutoDropItem and "ON" or "OFF")
         dropBtn.BackgroundColor3 = AutoDropItem and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 150)
+        dropBtn.BackgroundTransparency = AutoDropItem and 0.1 or 0.15
     end)
     y = y + 42
     
@@ -706,13 +724,13 @@ end)
 
 
 local foot=Instance.new("TextLabel")
-foot.Size=UDim2.new(1,0,0,16) -- Giảm kích thước footer
+foot.Size=UDim2.new(1,0,0,16) 
 foot.Position=UDim2.new(0,0,1,-16)
 foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.5 (Hub Size Reduced)"
+foot.Text="NTBA • Fruit Hub v16.6 (Transp & 2-Col)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.5 - Hub size reduced.")
+print("NTBA Fruit Hub v16.6 - Transparency added and Fruit panel is now 2 columns.")
