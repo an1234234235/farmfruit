@@ -10,11 +10,13 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local TweenService = game:GetService("TweenService") -- Giữ lại cho TweenPosition
 local player = Players.LocalPlayer
 local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
 local Backpack = player:WaitForChild("Backpack")
 
+-- Biến điều khiển chính
 local AutoFarmNPC = false
 local FarmRadius = 150 
 local AutoSkillState={Z=false,X=false,C=false,V=false} 
@@ -84,7 +86,6 @@ local function removeBillboardGuiForFruit(model, fruitName)
 end
 
 local function pickUpFruit(v, fruitName, pickupRemote)
-    -- Sử dụng Coroutine.wrap để thực thi nhanh chóng, tránh bị chặn
     coroutine.wrap(function()
         if hrp and hrp.Parent and v.PrimaryPart then
             local distance = (hrp.Position - v.PrimaryPart.Position).Magnitude
@@ -102,7 +103,6 @@ local function pickUpFruit(v, fruitName, pickupRemote)
                     end)
                 else
                     print("!!! Auto-Picked up: " .. fruitName .. " bằng Touch (Dự phòng) !!!")
-                    -- Touch pickup (chạm) thường được thực hiện sau khi tele
                 end
                 
                 task.wait(1.5) 
@@ -184,12 +184,16 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5) 
 if not PlayerGui then return end 
 
--- Tạo hàm Switch Toggle (ĐÃ SỬA LỖI TƯƠNG TÁC VỚI BIẾN)
+---
+## Hàm Toggle Switch (Đã sửa lỗi)
+---
+-- Tạo hàm Switch Toggle (ĐÃ SỬ DỤNG ATTRIBUTES VÀ XÓA TWEEN MÀU)
 local function createToggleSwitch(parent, initialPos, onClickCallback, initialState, enabledColor, disabledColor, toggleSize)
     toggleSize = toggleSize or UDim2.new(0, 44, 0, 24)
     local Switch = Instance.new("TextButton")
     Switch.Size = toggleSize
     Switch.Position = initialPos
+    -- Không dùng Tween, thay đổi màu trực tiếp
     Switch.BackgroundColor3 = initialState and enabledColor or disabledColor
     Switch.BackgroundTransparency = 0.5 
     Switch.Text = ""
@@ -197,6 +201,10 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     Switch.Parent = parent
     Instance.new("UICorner", Switch).CornerRadius = UDim.new(0.5, 0)
     
+    -- Gán trạng thái vào Attribute để truy cập an toàn hơn
+    Switch:SetAttribute("state", initialState) 
+    Switch:SetAttribute("isToggling", false) -- Cờ chống spam click
+
     local Slider = Instance.new("Frame")
     Slider.Size = UDim2.new(0, 18, 0, 18)
     Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -207,35 +215,39 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     local enabledPos = UDim2.new(1, -21, 0.5, -9) 
     local disabledPos = UDim2.new(0, 3, 0.5, -9)
     Slider.Position = initialState and enabledPos or disabledPos
-
-    local state = initialState
     
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
     Switch.MouseButton1Click:Connect(function()
-        state = not state
-        
-        -- Gọi callback để cập nhật biến Lua
-        onClickCallback(state) 
-        
-        -- Cập nhật giao diện
-        Switch:TweenBackgroundColor(
-            Enum.EasingDirection.Out, 
-            Enum.EasingStyle.Quad, 
-            0.2, 
-            false, 
-            state and enabledColor or disabledColor
-        )
-        Slider:TweenPosition(
-            state and enabledPos or disabledPos, 
-            Enum.EasingDirection.Out, 
-            Enum.EasingStyle.Quad, 
-            0.2, 
-            true
-        )
+        coroutine.wrap(function()
+            if Switch:GetAttribute("isToggling") then return end -- Chặn click spam
+
+            Switch:SetAttribute("isToggling", true) 
+            local currentState = Switch:GetAttribute("state")
+            local newState = not currentState
+            
+            Switch:SetAttribute("state", newState) 
+            
+            -- Gọi callback để cập nhật biến Lua
+            onClickCallback(newState) 
+            
+            -- Cập nhật màu Nhanh (Không Tween màu)
+            Switch.BackgroundColor3 = newState and enabledColor or disabledColor
+            
+            -- Tween vị trí thanh trượt
+            local targetPos = newState and enabledPos or disabledPos
+            local tween = TweenService:Create(Slider, tweenInfo, {Position = targetPos})
+            
+            tween:Play()
+            tween.Completed:Wait() -- Chờ Tween hoàn thành trước khi cho phép click tiếp
+            
+            Switch:SetAttribute("isToggling", false)
+        end)()
     end)
     return Switch, Slider
 end
 
--- ===== PHẦN UI (Kích thước mới và trong suốt) =====
+-- ===== PHẦN UI =====
 local MAIN_W, MAIN_H = 640, 380 
 local Sidebar_W = 140
 local ScreenGui = Instance.new("ScreenGui")
@@ -400,9 +412,9 @@ for name, btn in pairs(tabButtons) do
     end)
 end
 
--- ======================================================
--- 1. AUTO FARM (SKILLS)
--- ======================================================
+---
+## 1. AUTO FARM (SKILLS)
+---
 do
     local p = panels["AutoFarm"] 
     local y=6
@@ -436,15 +448,17 @@ do
             SkillContainer, 
             UDim2.new(0, 25 + (i-1)*70, 0, 0),
             function(state)
-                AutoSkillState[key] = state -- Sửa lỗi cập nhật key trong bảng
+                AutoSkillState[key] = state 
             end, 
-            AutoSkillState[key], -- Sử dụng trạng thái ban đầu từ bảng
+            AutoSkillState[key], 
             Color3.fromRGB(0,170,255), 
             Color3.fromRGB(60,60,62),
             UDim2.new(0, 44, 0, 24)
         )
     end
 end
+
+-- Logic Auto Spam Skills
 task.spawn(function()
     while true do
         task.wait(0.18)
@@ -460,9 +474,9 @@ task.spawn(function()
     end
 end)
 
--- ======================================================
--- 2. AUTO NPC
--- ======================================================
+---
+## 2. AUTO NPC
+---
 local AutoNPCPanel = panels["AutoNPC"]
 do 
     local p = AutoNPCPanel 
@@ -491,7 +505,7 @@ do
         p, 
         UDim2.new(0, 170, 0, y),
         function(state)
-            AutoFarmNPC = state -- Sửa lỗi cập nhật biến boolean
+            AutoFarmNPC = state 
         end, 
         AutoFarmNPC, 
         Color3.fromRGB(0, 150, 255), 
@@ -565,6 +579,7 @@ local function findAndFarmNPC()
     return false
 end
 
+-- Logic Auto Farm NPC
 task.spawn(function()
     while true do
         if AutoFarmNPC and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
@@ -574,9 +589,9 @@ task.spawn(function()
     end
 end)
 
--- ======================================================
--- 3. AUTO HAKI
--- ======================================================
+---
+## 3. AUTO HAKI
+---
 local AutoHakiPanel = panels["AutoHaki"]
 do
     local p = AutoHakiPanel 
@@ -605,7 +620,7 @@ do
         p, 
         UDim2.new(0, 120, 0, y),
         function(state)
-            AutoHakiState = state -- Sửa lỗi cập nhật biến boolean
+            AutoHakiState = state 
         end, 
         AutoHakiState, 
         Color3.fromRGB(0,170,255), 
@@ -613,6 +628,7 @@ do
     )
 end
 
+-- Logic Auto Haki
 task.spawn(function()
     while true do
         if AutoHakiState then
@@ -626,9 +642,9 @@ task.spawn(function()
     end
 end)
 
--- ======================================================
--- 4. FRUIT FINDER/PICKUP
--- ======================================================
+---
+## 4. FRUIT FINDER/PICKUP
+---
 local FruitPanel = panels["Fruit"]
 do
     local p = FruitPanel
@@ -679,7 +695,7 @@ do
             container, 
             UDim2.new(0, 130, 0, 4),
             function(state)
-                AutoFruitState[fruitName] = state -- Sửa lỗi cập nhật key trong bảng
+                AutoFruitState[fruitName] = state 
             end, 
             AutoFruitState[fruitName], 
             Color3.fromRGB(255, 170, 0), 
@@ -694,9 +710,9 @@ do
 
 end
 
--- ======================================================
--- 5. AUTO DROP FRUIT MIX
--- ======================================================
+---
+## 5. AUTO DROP FRUIT MIX
+---
 local DropPanel = panels["Drop Fruit Mix"]
 do
     local p = DropPanel
@@ -725,7 +741,7 @@ do
         p, 
         UDim2.new(0, 130, 0, y),
         function(state)
-            AutoDropItem = state -- Sửa lỗi cập nhật biến boolean
+            AutoDropItem = state 
         end, 
         AutoDropItem, 
         Color3.fromRGB(0, 170, 255), 
@@ -747,6 +763,7 @@ do
     y = y + 90 
 end
 
+-- Logic Auto Drop
 task.spawn(function()
     while true do
         if AutoDropItem then
@@ -769,9 +786,9 @@ task.spawn(function()
     end
 end)
 
--- ======================================================
--- 6. SETTINGS (Not yet implemented)
--- ======================================================
+---
+## 6. SETTINGS
+---
 local SettingsPanel = panels["Settings"]
 do
     local p = SettingsPanel
@@ -807,7 +824,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.8 (Final Toggle Fix)"
+foot.Text="NTBA • Fruit Hub v16.9 (Final Toggle Fix: Attributes)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.8 - Fixed toggle switch logic for all tabs.")
+print("NTBA Fruit Hub v16.9 - Final toggle switch logic fixed using Attributes and direct color change.")
