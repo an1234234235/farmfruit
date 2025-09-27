@@ -185,14 +185,15 @@ local PlayerGui = player:WaitForChild("PlayerGui", 5)
 if not PlayerGui then return end 
 
 ---
-## Hàm Toggle Switch (Đã khôi phục logic đơn giản)
+## Hàm Toggle Switch (Đã sửa lỗi v16.9 và thêm coroutine an toàn)
 ---
--- Tạo hàm Switch Toggle (Khôi phục logic ban đầu, chỉ thay đổi biến và UI trực tiếp)
+-- Sử dụng ATTRIBUTES và COROUTINE (An toàn hơn v17.0)
 local function createToggleSwitch(parent, initialPos, onClickCallback, initialState, enabledColor, disabledColor, toggleSize)
     toggleSize = toggleSize or UDim2.new(0, 44, 0, 24)
     local Switch = Instance.new("TextButton")
     Switch.Size = toggleSize
     Switch.Position = initialPos
+    -- Không dùng Tween màu
     Switch.BackgroundColor3 = initialState and enabledColor or disabledColor
     Switch.BackgroundTransparency = 0.5 
     Switch.Text = ""
@@ -200,6 +201,10 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     Switch.Parent = parent
     Instance.new("UICorner", Switch).CornerRadius = UDim.new(0.5, 0)
     
+    -- Gán trạng thái vào Attribute
+    Switch:SetAttribute("state", initialState) 
+    Switch:SetAttribute("isToggling", false)
+
     local Slider = Instance.new("Frame")
     Slider.Size = UDim2.new(0, 18, 0, 18)
     Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -210,28 +215,40 @@ local function createToggleSwitch(parent, initialPos, onClickCallback, initialSt
     local enabledPos = UDim2.new(1, -21, 0.5, -9) 
     local disabledPos = UDim2.new(0, 3, 0.5, -9)
     Slider.Position = initialState and enabledPos or disabledPos
-
-    local state = initialState -- Sử dụng biến cục bộ (giống như logic lỗi ban đầu)
+    
     local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
     Switch.MouseButton1Click:Connect(function()
-        state = not state
-        
-        -- Gọi callback để cập nhật biến Lua chính
-        onClickCallback(state) 
-        
-        -- Cập nhật giao diện Trực Tiếp
-        Switch.BackgroundColor3 = state and enabledColor or disabledColor
-        
-        -- Tween vị trí thanh trượt
-        local targetPos = state and enabledPos or disabledPos
-        local tween = TweenService:Create(Slider, tweenInfo, {Position = targetPos})
-        tween:Play()
+        -- Sử dụng coroutine để tránh chặn tiến trình chính
+        coroutine.wrap(function()
+            if Switch:GetAttribute("isToggling") then return end 
+            Switch:SetAttribute("isToggling", true) 
+            
+            local currentState = Switch:GetAttribute("state")
+            local newState = not currentState
+            
+            Switch:SetAttribute("state", newState) 
+            
+            -- Gọi callback để cập nhật biến Lua
+            onClickCallback(newState) 
+            
+            -- Cập nhật màu Nhanh
+            Switch.BackgroundColor3 = newState and enabledColor or disabledColor
+            
+            -- Tween vị trí thanh trượt
+            local targetPos = newState and enabledPos or disabledPos
+            local tween = TweenService:Create(Slider, tweenInfo, {Position = targetPos})
+            
+            tween:Play()
+            pcall(function() tween.Completed:Wait() end) -- Sử dụng pcall để tránh lỗi Executor
+            
+            Switch:SetAttribute("isToggling", false)
+        end)()
     end)
     return Switch, Slider
 end
 
--- ===== PHẦN UI =====
+-- ===== PHẦN UI (Giống các phiên bản trước) =====
 local MAIN_W, MAIN_H = 640, 380 
 local Sidebar_W = 140
 local ScreenGui = Instance.new("ScreenGui")
@@ -735,7 +752,7 @@ do
     y = y + 40
     
     local note = Instance.new("TextLabel", p)
-    note.Size = UDim2.new(1, -20, 0, 80)
+    note.Size = Udim2.new(1, -20, 0, 80)
     note.Position = UDim2.new(0, 10, 0, y)
     note.BackgroundTransparency = 1
     note.Font = Enum.Font.Gotham
@@ -808,7 +825,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v17.0 (Restored Simple Toggle Logic)"
+foot.Text="NTBA • Fruit Hub v17.1 (Final Stable Toggle Logic)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v17.0 - Restored simple toggle switch logic.")
+print("NTBA Fruit Hub v17.1 - Reverting to stable toggle logic (Attributes + pcall on Wait).")
