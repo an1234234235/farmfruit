@@ -1,9 +1,9 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.6.0 (CODE HOÀN CHỈNH - FIX LỖI XUNG ĐỘT)
+-- NTBA FARM HUB - V21.0.0 (CODE HOÀN CHỈNH)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [V21.6.0 FIX CƠ CHẾ]: Tăng độ trễ ổn định sau SafeTeleport lên 0.3s.
--- 2. [V21.6.0 FIX LOGIC]: Thêm task.wait() an toàn trong vòng lặp tìm kiếm rương.
--- 3. [V21.6.0 RESTORE]: Đưa độ trễ Auto Skill (Z,X,C,V) & Drop Item về trạng thái hoạt động cũ.
+-- 1. [V21.0.0 FIX]: Tối ưu hóa God Mode bằng RunService.Heartbeat (hiệu quả và ổn định hơn).
+-- 2. [V20.8.1 -> V21.0.0]: Cập nhật thống nhất tên phiên bản trên UI và Code.
+-- 3. [V20.8.1 FIX]: Đã thêm logic Auto Drop Item Plus (+) và Fix lỗi Loot Chest (Crate).
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -20,32 +20,39 @@ local FarmRadius = 150
 local AutoSkillState={Z=false,X=false,C=false,V=false}
 local AutoHakiState=false
 local AutoDropItem = false
-local AutoDropItemPlus = false 
+local AutoDropItemPlus = false -- BIẾN MỚI CHO DROP +
 local Hotkey = Enum.KeyCode.RightControl
 local HubVisible = true
 
+-- CHỈ CÒN BIẾN GOD MODE
 local GodModeState = false
 
--- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V21.6.0 - LOGIC CẤU TRÚC CHÍNH XÁC ]]
+-- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.8.1 - ĐÃ SỬA ]]
 local AutoCollectChestState = false
 local CollectChestRadius = 250
--- CÁC TÊN MODEL/PART CHÍNH XÁC THEO CẤU TRÚC BẠN CUNG CẤP
-local ROOT_MODEL_NAME = "Barrels"       -- Folder chứa tất cả rương/thùng
-local CHEST_CONTAINER_NAME = "Crates"   -- Folder trung gian chứa Part rương
-local CHEST_PART_NAME = "Crate"         -- Part thực tế có ClickDetector
-local TELEPORT_DISTANCE = 4             -- Khoảng cách TP an toàn
+local CHEST_MODEL_NAME = "Crate" -- ĐÃ SỬA: Thay "stall" bằng "Crate"
+local CLICKABLE_PART_NAME = "Crate" -- ĐÃ SỬA: Thay "Part" bằng "Crate" (Giả định Part chứa ClickDetector)
 -- ---------------------------------------------------
 
 -- DANH SÁCH DROP CŨ (TRÁI CÂY, MIX THƯỜNG)
 local ITEM_DROP_LIST = {
-    ["Apple"] = true, ["Cantaloup"] = true, ["Cantaloupe"] = true, ["Banana"] = true,
-    ["Green Apple"] = true, ["Coconut"] = true, ["Pumpkin"] = true,
-    ["Prickly Pear"] = true, ["Melon"] = true,
+    ["Apple"] = true,
+    ["Cantaloup"] = true,
+    ["Cantaloupe"] = true,
+    ["Banana"] = true,
+    ["Green Apple"] = true,
+    ["Coconut"] = true,
+    ["Pumpkin"] = true,
+    ["Prickly Pear"] = true,
+    ["Melon"] = true,
 }
 
 -- DANH SÁCH DROP MỚI (CÓ DẤU +)
 local ITEM_DROP_PLUS_LIST = {
-    ["Cider+"] = true, ["Lemonade+"] = true, ["Juice+"] = true, ["Smoothie+"] = true,
+    ["Cider+"] = true,
+    ["Lemonade+"] = true,
+    ["Juice+"] = true,
+    ["Smoothie+"] = true,
 }
 
 local function findDroppableItemInList(dropList)
@@ -114,7 +121,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.6.0)" -- CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.0.0)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -186,7 +193,7 @@ Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
--- Danh sách tab đã được cập nhật
+-- Danh sách tab đã được cập nhật (Drop -> Fruit Mix)
 local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit Mix","Utility","Settings"}
 local tabButtons, panels = {}, {}
 
@@ -284,9 +291,8 @@ task.spawn(function()
         for key,enabled in pairs(AutoSkillState) do
             if enabled and not AutoFarmNPC then
                 pcall(function()
-                    -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
                     VirtualInputManager:SendKeyEvent(true,key,false,game)
-                    task.wait(0.04) 
+                    task.wait(0.04)
                     VirtualInputManager:SendKeyEvent(false,key,false,game)
                 end)
             end
@@ -299,7 +305,7 @@ do
     local p = AutoNPCPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, y)
+    label.Size = UDim2.new(1, 0, 0, 24)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -380,9 +386,8 @@ local function findAndFarmNPC()
             for key, enabled in pairs(AutoSkillState) do
                 if enabled then
                     pcall(function()
-                        -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
                         VirtualInputManager:SendKeyEvent(true, key, false, game)
-                        task.wait(0.04) 
+                        task.wait(0.04)
                         VirtualInputManager:SendKeyEvent(false, key, false, game)
                     end)
                 end
@@ -403,12 +408,12 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP GOD MODE (Dùng Heartbeat)
+-- VÒNG LẶP GOD MODE (ĐÃ SỬA VÀ TỐI ƯU V21.0.0 - Dùng Heartbeat)
 RunService.Heartbeat:Connect(function(step)
     if GodModeState and player.Character then
         local human = player.Character:FindFirstChildOfClass("Humanoid")
         if human and human.Health > 0 and human.MaxHealth > 0 then
-            -- Đảm bảo máu được đặt lại ngay lập tức
+            -- [V21.0.0 FIX]: Đảm bảo máu được đặt lại ngay lập tức
             human.Health = human.MaxHealth
         end
     end
@@ -473,7 +478,7 @@ task.spawn(function()
 end)
 
 
-local FruitMixPanel = panels["Fruit Mix"]
+local FruitMixPanel = panels["Fruit Mix"] -- ĐÃ ĐỔI TÊN
 do
     local p = FruitMixPanel
     local y = 6
@@ -491,7 +496,7 @@ do
     local dropBtn = Instance.new("TextButton", p)
     dropBtn.Size = UDim2.new(0, 280, 0, 32)
     dropBtn.Position = UDim2.new(0, 10, 0, y)
-    dropBtn.Text = "Auto Drop Item (Thường): OFF"
+    dropBtn.Text = "Auto Drop Item (Thường): OFF" -- Đã đổi tên UI cho rõ ràng
     dropBtn.Font = Enum.Font.GothamBold
     dropBtn.TextSize = 14
     dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -533,9 +538,9 @@ do
     local collectBtn = Instance.new("TextButton", p)
     collectBtn.Size = UDim2.new(0, 280, 0, 32)
     collectBtn.Position = UDim2.new(0, 10, 0, y)
-    collectBtn.Text = "Auto Fruit Mix: OFF"
+    collectBtn.Text = "Auto Fruit Mix (Loot Chests): OFF"
     collectBtn.Font = Enum.Font.GothamBold
-    collectBtn.TextSize = 14
+    collectBtn.TextSize = 13
     collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     collectBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 50)
     collectBtn.BackgroundTransparency = 0.15
@@ -544,7 +549,7 @@ do
 
     collectBtn.MouseButton1Click:Connect(function()
         AutoCollectChestState = not AutoCollectChestState
-        collectBtn.Text = "Auto Fruit Mix: " .. (AutoCollectChestState and "ON" or "OFF")
+        collectBtn.Text = "Auto Fruit Mix (Loot Chests): " .. (AutoCollectChestState and "ON" or "OFF")
         collectBtn.BackgroundColor3 = AutoCollectChestState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(150, 150, 50)
         collectBtn.BackgroundTransparency = AutoCollectChestState and 0.1 or 0.15
     end)
@@ -612,8 +617,8 @@ do
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    -- Cập nhật Text chú thích
-    note.Text = string.format("Auto Fruit Mix: Tìm cấu trúc Barrels -> Crates -> Crate (Part). (TP Distance: %d studs)", TELEPORT_DISTANCE)
+    -- ĐÃ CẬP NHẬT TEXT:
+    note.Text = string.format("Auto Fruit Mix: Tìm Model '%s', Teleport & click Part '%s'. Phạm vi Rada đi theo nhân vật.", CHEST_MODEL_NAME, CLICKABLE_PART_NAME)
 end
 
 
@@ -747,7 +752,7 @@ task.spawn(function()
             if itemToDrop then
                 pcall(function()
                     itemToDrop.Parent = Character
-                    task.wait(0.01) -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
+                    task.wait(0.01)
 
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
                     task.wait(0.01)
@@ -770,7 +775,7 @@ task.spawn(function()
             if itemToDrop then
                 pcall(function()
                     itemToDrop.Parent = Character
-                    task.wait(0.01) -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
+                    task.wait(0.01)
 
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
                     task.wait(0.01)
@@ -784,80 +789,59 @@ task.spawn(function()
     end
 end)
 
--- HÀM TELEPORT AN TOÀN
-local function SafeTeleport(targetPos)
-    local offset = (hrp.Position - targetPos).Unit * TELEPORT_DISTANCE
-    
-    -- TP 1 (Tới Part)
-    pcall(function()
-        hrp.CFrame = CFrame.new(targetPos + offset)
-    end)
-    task.wait(0.05)
-    
-    -- TP 2 (Xác nhận vị trí) - Giúp TP ổn định hơn trên các bề mặt
-    pcall(function()
-        hrp.CFrame = CFrame.new(targetPos + offset)
-    end)
-    
-    -- FIX: Tăng độ trễ ổn định sau TP để không gây lỗi vật lý/lag Input
-    task.wait(0.3) 
-end
-
 -- VÒNG LẶP AUTO COLLECT CHEST (RADA MODE)
 task.spawn(function()
     while true do
         if AutoCollectChestState and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
 
-            local targetChestPart = nil
+            local targetChest = nil
             local shortestDistance = CollectChestRadius + 1
-            local hrpPosition = hrp.Position 
-            
-            local barrelsRoot = workspace:FindFirstChild(ROOT_MODEL_NAME)
-            
-            if barrelsRoot then
-                local cratesContainer = barrelsRoot:FindFirstChild(CHEST_CONTAINER_NAME)
+            local hrpPosition = hrp.Position -- Lấy vị trí hiện tại của nhân vật (Tâm Rada)
 
-                if cratesContainer then
-                    -- BƯỚC 1: TÌM MỤC TIÊU CÓ CẤU TRÚC ĐÚNG
-                    for _, part in ipairs(cratesContainer:GetDescendants()) do
-                        if part.Name == CHEST_PART_NAME and part:IsA("BasePart") then
-                            local clickDetector = part:FindFirstChildOfClass("ClickDetector")
+            -- BƯỚC 1: TÌM MỤC TIÊU
+            for _, child in ipairs(workspace:GetDescendants()) do
+                -- [V20.8.1 FIX] Bộ lọc tìm kiếm Model
+                if child.Name == CHEST_MODEL_NAME and child:IsA("Model") then
+                    local clickablePart = child:FindFirstChild(CLICKABLE_PART_NAME)
 
-                            if clickDetector then
-                                local distance = (hrpPosition - part.Position).Magnitude
-                                
-                                if distance < shortestDistance then
-                                    shortestDistance = distance
-                                    targetChestPart = part -- Part Crate chính là mục tiêu
-                                end
+                    -- CHỈ XÉT KHI PART CÓ CLICK DETECTOR
+                    if clickablePart and clickablePart:FindFirstChildOfClass("ClickDetector") then
+                        if clickablePart:IsA("BasePart") then
+                            local distance = (hrpPosition - clickablePart.Position).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                targetChest = clickablePart
                             end
                         end
                     end
                 end
+            end
 
-                -- BƯỚC 2: TELEPORT VÀ CLICK
-                if targetChestPart then
-                    local clickDetector = targetChestPart:FindFirstChildOfClass("ClickDetector")
-                    
-                    if clickDetector then
-                        -- Dùng hàm TP an toàn (có độ trễ 0.3s)
-                        SafeTeleport(targetChestPart.Position)
+            -- BƯỚC 2: TELEPORT VÀ CLICK
+            if targetChest then
+                local targetPos = targetChest.Position
+                -- Teleport đến vị trí cách target 5 studs
+                local offset = (hrpPosition - targetPos).Unit * 5
 
-                        pcall(function()
-                            -- Gửi lệnh click. Tham số 2 là vị trí, tham số 3 là khoảng cách.
-                            clickDetector:MouseClick(player, targetChestPart.Position, 0.1)
-                        end)
-                        
-                        task.wait(0.5) -- Đợi rương hồi chiêu/biến mất
-                    end
+                -- SỬ DỤNG LỆNH TELEPORT MẠNH HƠN (Force CFrame)
+                pcall(function()
+                    hrp.CFrame = CFrame.new(targetPos + offset)
+                end)
 
-                else
-                    -- FIX: Đảm bảo có task.wait() an toàn ở đây để nhường luồng CPU
-                    task.wait(1.0) 
+                -- Đợi nhân vật ổn định và chắc chắn nó ở đúng chỗ
+                task.wait(0.15)
+
+                local clickDetector = targetChest:FindFirstChildOfClass("ClickDetector")
+                if clickDetector then
+                    pcall(function()
+                        -- Gửi lệnh click (tham số thứ 2 là khoảng cách)
+                        clickDetector:MouseClick(player, targetChest.Position, 0.1)
+                    end)
                 end
+
+                task.wait(0.5) -- Đợi 0.5 giây trước khi tìm hòm tiếp theo
             else
-                -- print("Không tìm thấy Model/Folder chứa rương: " .. ROOT_MODEL_NAME)
-                task.wait(2.0)
+                task.wait(1.0) -- Không tìm thấy hòm nào trong phạm vi, đợi lâu hơn
             end
         else
             task.wait(0.5)
@@ -873,7 +857,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.6.0 (FIX XUNG ĐỘT LOGIC LOOT CHEST)" 
+foot.Text="NTBA • Farm Hub v21.0.0 (God Mode Tối Ưu & Drop +)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN VÀ CHÚ THÍCH
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.6.0 - Đã sửa lỗi xung đột. Vui lòng kiểm tra lại tất cả chức năng.")
+print("NTBA Farm Hub v21.0.0 - Logic God Mode tối ưu & Nâng cấp phiên bản.") -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
