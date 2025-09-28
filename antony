@@ -1,3 +1,11 @@
+-- ================================================================= --
+-- NTBA FARM HUB - V21.0.0 (CODE HOÀN CHỈNH)
+-- CHÚ THÍCH CẬP NHẬT:
+-- 1. [V21.0.0 FIX]: Tối ưu hóa God Mode bằng RunService.Heartbeat (hiệu quả và ổn định hơn).
+-- 2. [V20.8.1 -> V21.0.0]: Cập nhật thống nhất tên phiên bản trên UI và Code.
+-- 3. [V20.8.1 FIX]: Đã thêm logic Auto Drop Item Plus (+) và Fix lỗi Loot Chest (Crate).
+-- ================================================================= --
+
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -13,8 +21,6 @@ local AutoSkillState={Z=false,X=false,C=false,V=false}
 local AutoHakiState=false
 local AutoDropItem = false
 local AutoDropItemPlus = false -- BIẾN MỚI CHO DROP +
-
--- Thêm biến Hotkey có thể tùy chỉnh
 local Hotkey = Enum.KeyCode.RightControl
 local HubVisible = true
 
@@ -115,7 +121,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V20.8.1)"
+TitleLabel.Text = "NTBA • Farm Hub (V21.0.0)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -402,15 +408,13 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP GOD MODE
-task.spawn(function()
-    while task.wait(0.01) do
-        if GodModeState and player.Character then
-            local human = player.Character:FindFirstChildOfClass("Humanoid")
-            if human and human.Health > 0 and human.MaxHealth > 0 then
-                -- Đặt lại máu về tối đa
-                human.Health = human.MaxHealth
-            end
+-- VÒNG LẶP GOD MODE (ĐÃ SỬA VÀ TỐI ƯU V21.0.0 - Dùng Heartbeat)
+RunService.Heartbeat:Connect(function(step)
+    if GodModeState and player.Character then
+        local human = player.Character:FindFirstChildOfClass("Humanoid")
+        if human and human.Health > 0 and human.MaxHealth > 0 then
+            -- [V21.0.0 FIX]: Đảm bảo máu được đặt lại ngay lập tức
+            human.Health = human.MaxHealth
         end
     end
 end)
@@ -509,7 +513,7 @@ do
     end)
     y = y + 40
 
-    -- NÚT AUTO DROP ITEM PLUS (+) -- NÚT MỚI
+    -- NÚT AUTO DROP ITEM PLUS (+)
     local dropPlusBtn = Instance.new("TextButton", p)
     dropPlusBtn.Size = UDim2.new(0, 280, 0, 32)
     dropPlusBtn.Position = UDim2.new(0, 10, 0, y)
@@ -762,7 +766,7 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP AUTO DROP ITEM PLUS (+) -- VÒNG LẶP MỚI
+-- VÒNG LẶP AUTO DROP ITEM PLUS (+)
 task.spawn(function()
     while true do
         if AutoDropItemPlus then
@@ -796,7 +800,7 @@ task.spawn(function()
 
             -- BƯỚC 1: TÌM MỤC TIÊU
             for _, child in ipairs(workspace:GetDescendants()) do
-                -- ĐÃ SỬA: BỘ LỌC TÌM KIẾM
+                -- [V20.8.1 FIX] Bộ lọc tìm kiếm Model
                 if child.Name == CHEST_MODEL_NAME and child:IsA("Model") then
                     local clickablePart = child:FindFirstChild(CLICKABLE_PART_NAME)
 
@@ -853,7 +857,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v20.8.1 (Thêm Drop +)"
+foot.Text="NTBA • Farm Hub v21.0.0 (God Mode Tối Ưu & Drop +)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN VÀ CHÚ THÍCH
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.")
+print("NTBA Farm Hub v21.0.0 - Logic God Mode tối ưu & Nâng cấp phiên bản.") -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
