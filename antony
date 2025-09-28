@@ -1,9 +1,9 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.0.0 (CODE HOÀN CHỈNH)
+-- NTBA FARM HUB - V21.1.0 (CODE HOÀN CHỈNH)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [V21.0.0 FIX]: Tối ưu hóa God Mode bằng RunService.Heartbeat (hiệu quả và ổn định hơn).
--- 2. [V20.8.1 -> V21.0.0]: Cập nhật thống nhất tên phiên bản trên UI và Code.
--- 3. [V20.8.1 FIX]: Đã thêm logic Auto Drop Item Plus (+) và Fix lỗi Loot Chest (Crate).
+-- 1. [V21.1.0 FIX]: Tối ưu hóa Teleport/Click logic cho Auto Collect Chests.
+-- 2. [V21.1.0 FIX]: Cập nhật UI: Bỏ "(Loot Chests)" khỏi Auto Fruit Mix.
+-- 3. [V21.0.0 FIX]: God Mode tối ưu bằng Heartbeat đã được giữ lại.
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -27,11 +27,12 @@ local HubVisible = true
 -- CHỈ CÒN BIẾN GOD MODE
 local GodModeState = false
 
--- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.8.1 - ĐÃ SỬA ]]
+-- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V21.1.0 - ĐÃ SỬA ]]
 local AutoCollectChestState = false
 local CollectChestRadius = 250
-local CHEST_MODEL_NAME = "Crate" -- ĐÃ SỬA: Thay "stall" bằng "Crate"
-local CLICKABLE_PART_NAME = "Crate" -- ĐÃ SỬA: Thay "Part" bằng "Crate" (Giả định Part chứa ClickDetector)
+local CHEST_MODEL_NAME = "Crate"
+local CLICKABLE_PART_NAME = "Crate"
+local TELEPORT_DISTANCE = 8 -- [V21.1.0 FIX] Tăng khoảng cách TP lên 8 studs
 -- ---------------------------------------------------
 
 -- DANH SÁCH DROP CŨ (TRÁI CÂY, MIX THƯỜNG)
@@ -121,7 +122,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.0.0)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.1.0)" -- [V21.1.0 FIX] CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -408,12 +409,12 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP GOD MODE (ĐÃ SỬA VÀ TỐI ƯU V21.0.0 - Dùng Heartbeat)
+-- VÒNG LẶP GOD MODE (ĐÃ TỐI ƯU V21.0.0 - Dùng Heartbeat)
 RunService.Heartbeat:Connect(function(step)
     if GodModeState and player.Character then
         local human = player.Character:FindFirstChildOfClass("Humanoid")
         if human and human.Health > 0 and human.MaxHealth > 0 then
-            -- [V21.0.0 FIX]: Đảm bảo máu được đặt lại ngay lập tức
+            -- Đảm bảo máu được đặt lại ngay lập tức
             human.Health = human.MaxHealth
         end
     end
@@ -478,7 +479,7 @@ task.spawn(function()
 end)
 
 
-local FruitMixPanel = panels["Fruit Mix"] -- ĐÃ ĐỔI TÊN
+local FruitMixPanel = panels["Fruit Mix"]
 do
     local p = FruitMixPanel
     local y = 6
@@ -496,7 +497,7 @@ do
     local dropBtn = Instance.new("TextButton", p)
     dropBtn.Size = UDim2.new(0, 280, 0, 32)
     dropBtn.Position = UDim2.new(0, 10, 0, y)
-    dropBtn.Text = "Auto Drop Item (Thường): OFF" -- Đã đổi tên UI cho rõ ràng
+    dropBtn.Text = "Auto Drop Item (Thường): OFF"
     dropBtn.Font = Enum.Font.GothamBold
     dropBtn.TextSize = 14
     dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -538,9 +539,9 @@ do
     local collectBtn = Instance.new("TextButton", p)
     collectBtn.Size = UDim2.new(0, 280, 0, 32)
     collectBtn.Position = UDim2.new(0, 10, 0, y)
-    collectBtn.Text = "Auto Fruit Mix (Loot Chests): OFF"
+    collectBtn.Text = "Auto Fruit Mix: OFF" -- [V21.1.0 FIX] BỎ CỤM (Loot Chests)
     collectBtn.Font = Enum.Font.GothamBold
-    collectBtn.TextSize = 13
+    collectBtn.TextSize = 14 -- Đã tăng size
     collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     collectBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 50)
     collectBtn.BackgroundTransparency = 0.15
@@ -549,7 +550,7 @@ do
 
     collectBtn.MouseButton1Click:Connect(function()
         AutoCollectChestState = not AutoCollectChestState
-        collectBtn.Text = "Auto Fruit Mix (Loot Chests): " .. (AutoCollectChestState and "ON" or "OFF")
+        collectBtn.Text = "Auto Fruit Mix: " .. (AutoCollectChestState and "ON" or "OFF")
         collectBtn.BackgroundColor3 = AutoCollectChestState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(150, 150, 50)
         collectBtn.BackgroundTransparency = AutoCollectChestState and 0.1 or 0.15
     end)
@@ -617,8 +618,8 @@ do
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    -- ĐÃ CẬP NHẬT TEXT:
-    note.Text = string.format("Auto Fruit Mix: Tìm Model '%s', Teleport & click Part '%s'. Phạm vi Rada đi theo nhân vật.", CHEST_MODEL_NAME, CLICKABLE_PART_NAME)
+    -- Cập nhật Text chú thích
+    note.Text = string.format("Auto Fruit Mix: Tìm Model '%s', Teleport & click Part '%s'. (TP Distance: %d studs)", CHEST_MODEL_NAME, CLICKABLE_PART_NAME, TELEPORT_DISTANCE)
 end
 
 
@@ -800,11 +801,9 @@ task.spawn(function()
 
             -- BƯỚC 1: TÌM MỤC TIÊU
             for _, child in ipairs(workspace:GetDescendants()) do
-                -- [V20.8.1 FIX] Bộ lọc tìm kiếm Model
                 if child.Name == CHEST_MODEL_NAME and child:IsA("Model") then
                     local clickablePart = child:FindFirstChild(CLICKABLE_PART_NAME)
 
-                    -- CHỈ XÉT KHI PART CÓ CLICK DETECTOR
                     if clickablePart and clickablePart:FindFirstChildOfClass("ClickDetector") then
                         if clickablePart:IsA("BasePart") then
                             local distance = (hrpPosition - clickablePart.Position).Magnitude
@@ -820,16 +819,16 @@ task.spawn(function()
             -- BƯỚC 2: TELEPORT VÀ CLICK
             if targetChest then
                 local targetPos = targetChest.Position
-                -- Teleport đến vị trí cách target 5 studs
-                local offset = (hrpPosition - targetPos).Unit * 5
+                -- [V21.1.0 FIX] Teleport đến vị trí cách target 8 studs
+                local offset = (hrpPosition - targetPos).Unit * TELEPORT_DISTANCE
 
                 -- SỬ DỤNG LỆNH TELEPORT MẠNH HƠN (Force CFrame)
                 pcall(function()
                     hrp.CFrame = CFrame.new(targetPos + offset)
                 end)
 
-                -- Đợi nhân vật ổn định và chắc chắn nó ở đúng chỗ
-                task.wait(0.15)
+                -- [V21.1.0 FIX] Tăng thời gian đợi để nhân vật ổn định và lệnh click không bị miss
+                task.wait(0.2) 
 
                 local clickDetector = targetChest:FindFirstChildOfClass("ClickDetector")
                 if clickDetector then
@@ -839,7 +838,8 @@ task.spawn(function()
                     end)
                 end
 
-                task.wait(0.5) -- Đợi 0.5 giây trước khi tìm hòm tiếp theo
+                -- [V21.1.0 FIX] Tăng thời gian đợi sau khi click
+                task.wait(0.7) 
             else
                 task.wait(1.0) -- Không tìm thấy hòm nào trong phạm vi, đợi lâu hơn
             end
@@ -857,7 +857,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.0.0 (God Mode Tối Ưu & Drop +)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN VÀ CHÚ THÍCH
+foot.Text="NTBA • Farm Hub v21.1.0 (Loot Chest Tối Ưu)" -- [V21.1.0 FIX] CẬP NHẬT PHIÊN BẢN VÀ CHÚ THÍCH
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.0.0 - Logic God Mode tối ưu & Nâng cấp phiên bản.") -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
+print("NTBA Farm Hub v21.1.0 - Loot Chest Teleport/Click Tối Ưu & Sửa UI Text.") -- [V21.1.0 FIX] CẬP NHẬT PHIÊN BẢN
