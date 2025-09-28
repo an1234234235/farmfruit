@@ -12,6 +12,7 @@ local FarmRadius = 150
 local AutoSkillState={Z=false,X=false,C=false,V=false} 
 local AutoHakiState=false 
 local AutoDropItem = false 
+local AutoDropItemPlus = false -- BIẾN MỚI CHO DROP +
 
 -- Thêm biến Hotkey có thể tùy chỉnh
 local Hotkey = Enum.KeyCode.RightControl
@@ -20,16 +21,14 @@ local HubVisible = true
 -- CHỈ CÒN BIẾN GOD MODE
 local GodModeState = false 
 
--- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.7 ]]
+-- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.8.1 ]]
 local AutoCollectChestState = false 
--- Phạm vi tìm kiếm Hòm/Thùng (mặc định 250 studs, có thể chỉnh trong UI)
 local CollectChestRadius = 250 
--- Tên của đối tượng thùng/hòm cần tìm kiếm trong Workspace
 local CHEST_MODEL_NAME = "stall" 
--- Tên của Part chứa ClickDetector bên trong Model đó
 local CLICKABLE_PART_NAME = "Part" 
 -- ---------------------------------------------------
 
+-- DANH SÁCH DROP CŨ (TRÁI CÂY, MIX THƯỜNG)
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
     ["Cantaloup"] = true,
@@ -42,9 +41,17 @@ local ITEM_DROP_LIST = {
     ["Melon"] = true,
 }
 
-local function findDroppableItemInList()
+-- DANH SÁCH DROP MỚI (CÓ DẤU +)
+local ITEM_DROP_PLUS_LIST = {
+    ["Cider+"] = true,
+    ["Lemonade+"] = true,
+    ["Juice+"] = true,
+    ["Smoothie+"] = true,
+}
+
+local function findDroppableItemInList(dropList)
     for _, item in ipairs(Backpack:GetChildren()) do
-        if (item:IsA("Tool") or item:IsA("HopperBin")) and ITEM_DROP_LIST[item.Name] then 
+        if (item:IsA("Tool") or item:IsA("HopperBin")) and dropList[item.Name] then 
             return item
         end
     end
@@ -56,10 +63,8 @@ player.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
     hrp = Character:WaitForChild("HumanoidRootPart")
     
-    -- Đảm bảo God Mode được bật lại sau khi tái sinh
     if GodModeState then
         task.wait(0.2) 
-        -- God Mode sẽ được vòng lặp dưới đây xử lý tiếp
     end
 end)
 
@@ -110,7 +115,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V20.7)"
+TitleLabel.Text = "NTBA • Farm Hub (V20.8.1)"
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -483,11 +488,11 @@ do
     label.Text = "AUTO DROP ITEMS (FRUIT MIX)"
     y = y + 30
 
-    -- NÚT AUTO DROP ITEM
+    -- NÚT AUTO DROP ITEM THƯỜNG
     local dropBtn = Instance.new("TextButton", p)
     dropBtn.Size = UDim2.new(0, 280, 0, 32) 
     dropBtn.Position = UDim2.new(0, 10, 0, y)
-    dropBtn.Text = "Auto Drop Item (Đã chọn lọc): OFF"
+    dropBtn.Text = "Auto Drop Item (Thường): OFF" -- Đã đổi tên UI cho rõ ràng
     dropBtn.Font = Enum.Font.GothamBold
     dropBtn.TextSize = 14
     dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -498,9 +503,30 @@ do
     
     dropBtn.MouseButton1Click:Connect(function()
         AutoDropItem = not AutoDropItem
-        dropBtn.Text = "Auto Drop Item (Đã chọn lọc): " .. (AutoDropItem and "ON" or "OFF")
+        dropBtn.Text = "Auto Drop Item (Thường): " .. (AutoDropItem and "ON" or "OFF")
         dropBtn.BackgroundColor3 = AutoDropItem and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 150)
         dropBtn.BackgroundTransparency = AutoDropItem and 0.1 or 0.15
+    end)
+    y = y + 40
+    
+    -- NÚT AUTO DROP ITEM PLUS (+) -- NÚT MỚI
+    local dropPlusBtn = Instance.new("TextButton", p)
+    dropPlusBtn.Size = UDim2.new(0, 280, 0, 32) 
+    dropPlusBtn.Position = UDim2.new(0, 10, 0, y)
+    dropPlusBtn.Text = "Auto Drop Item (+): OFF" 
+    dropPlusBtn.Font = Enum.Font.GothamBold
+    dropPlusBtn.TextSize = 14
+    dropPlusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dropPlusBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 150) 
+    dropPlusBtn.BackgroundTransparency = 0.15
+    dropPlusBtn.BorderSizePixel = 0
+    Instance.new("UICorner", dropPlusBtn).CornerRadius = UDim.new(0, 6)
+    
+    dropPlusBtn.MouseButton1Click:Connect(function()
+        AutoDropItemPlus = not AutoDropItemPlus
+        dropPlusBtn.Text = "Auto Drop Item (+): " .. (AutoDropItemPlus and "ON" or "OFF")
+        dropPlusBtn.BackgroundColor3 = AutoDropItemPlus and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(50, 150, 150)
+        dropPlusBtn.BackgroundTransparency = AutoDropItemPlus and 0.1 or 0.15
     end)
     y = y + 42
     
@@ -508,7 +534,7 @@ do
     local collectBtn = Instance.new("TextButton", p)
     collectBtn.Size = UDim2.new(0, 280, 0, 32) 
     collectBtn.Position = UDim2.new(0, 10, 0, y)
-    collectBtn.Text = "Auto Fruit Mix (Loot Chests): OFF" -- ĐÃ ĐỔI TÊN
+    collectBtn.Text = "Auto Fruit Mix (Loot Chests): OFF" 
     collectBtn.Font = Enum.Font.GothamBold
     collectBtn.TextSize = 13
     collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -596,7 +622,7 @@ do
     local p = UtilityPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 24)
+    label.Size = UDim2.new(1, 0, 0, y)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -712,10 +738,34 @@ do
     y = y + 50
 end
 
+-- VÒNG LẶP AUTO DROP ITEM THƯỜNG
 task.spawn(function()
     while true do
         if AutoDropItem then
-            local itemToDrop = findDroppableItemInList()
+            local itemToDrop = findDroppableItemInList(ITEM_DROP_LIST)
+            
+            if itemToDrop then
+                pcall(function()
+                    itemToDrop.Parent = Character 
+                    task.wait(0.01) 
+                    
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+                    task.wait(0.01) 
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+                    
+                    task.wait(0.1) 
+                end)
+            end
+        end
+        task.wait(0.1) 
+    end
+end)
+
+-- VÒNG LẶP AUTO DROP ITEM PLUS (+) -- VÒNG LẶP MỚI
+task.spawn(function()
+    while true do
+        if AutoDropItemPlus then
+            local itemToDrop = findDroppableItemInList(ITEM_DROP_PLUS_LIST)
             
             if itemToDrop then
                 pcall(function()
@@ -743,11 +793,12 @@ task.spawn(function()
             local shortestDistance = CollectChestRadius + 1
             local hrpPosition = hrp.Position -- Lấy vị trí hiện tại của nhân vật (Tâm Rada)
 
-            -- Tìm kiếm đối tượng thùng/hòm gần nhất trong phạm vi CollectChestRadius
+            -- BƯỚC 1: TÌM MỤC TIÊU
             for _, child in ipairs(workspace:GetDescendants()) do
                 if child.Name == CHEST_MODEL_NAME and child:IsA("Model") then
                     local clickablePart = child:FindFirstChild(CLICKABLE_PART_NAME)
                     
+                    -- CHỈ XÉT KHI PART CÓ CLICK DETECTOR
                     if clickablePart and clickablePart:FindFirstChildOfClass("ClickDetector") then
                         if clickablePart:IsA("BasePart") then
                             local distance = (hrpPosition - clickablePart.Position).Magnitude
@@ -760,18 +811,20 @@ task.spawn(function()
                 end
             end
 
+            -- BƯỚC 2: TELEPORT VÀ CLICK
             if targetChest then
-                -- 1. Teleport đến gần đối tượng để có thể click
+                local targetPos = targetChest.Position
+                -- Teleport đến vị trí cách target 5 studs
+                local offset = (hrpPosition - targetPos).Unit * 5
+                
+                -- SỬ DỤNG LỆNH TELEPORT MẠNH HƠN (Force CFrame)
                 pcall(function()
-                    local targetPos = targetChest.Position
-                    -- Teleport đến vị trí cách target 5 studs
-                    local offset = (hrpPosition - targetPos).Unit * 5
                     hrp.CFrame = CFrame.new(targetPos + offset) 
                 end)
                 
-                task.wait(0.1) -- Đợi Teleport hoàn thành
+                -- Đợi nhân vật ổn định và chắc chắn nó ở đúng chỗ
+                task.wait(0.15) 
                 
-                -- 2. Tìm ClickDetector và gửi lệnh click
                 local clickDetector = targetChest:FindFirstChildOfClass("ClickDetector")
                 if clickDetector then
                     pcall(function()
@@ -798,7 +851,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v20.7 (Fruit Mix & Loot)"
+foot.Text="NTBA • Farm Hub v20.8.1 (Thêm Drop +)"
 foot.Parent=Main
 
-print("NTBA Farm Hub v20.7 - Fruit Mix logic activated.")
+print("NTBA Farm Hub v20.8.1 - Drop Plus logic activated.")
