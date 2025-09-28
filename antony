@@ -20,6 +20,16 @@ local HubVisible = true
 -- CHỈ CÒN BIẾN GOD MODE
 local GodModeState = false 
 
+-- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.7 ]]
+local AutoCollectChestState = false 
+-- Phạm vi tìm kiếm Hòm/Thùng (mặc định 250 studs, có thể chỉnh trong UI)
+local CollectChestRadius = 250 
+-- Tên của đối tượng thùng/hòm cần tìm kiếm trong Workspace
+local CHEST_MODEL_NAME = "stall" 
+-- Tên của Part chứa ClickDetector bên trong Model đó
+local CLICKABLE_PART_NAME = "Part" 
+-- ---------------------------------------------------
+
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
     ["Cantaloup"] = true,
@@ -100,7 +110,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V20.4)"
+TitleLabel.Text = "NTBA • Farm Hub (V20.7)"
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -172,8 +182,8 @@ Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
--- Danh sách tab đã được cập nhật
-local tabs = {"AutoFarm","AutoNPC","AutoHaki","Drop","Utility","Settings"}
+-- Danh sách tab đã được cập nhật (Drop -> Fruit Mix)
+local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit Mix","Utility","Settings"}
 local tabButtons, panels = {}, {}
 
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
@@ -411,7 +421,7 @@ do
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 14
     lbl.TextColor3 = Color3.fromRGB(220,220,220)
-    lbl.Text="Auto Haki (Giữ R trong 6s, nghỉ 1s)" -- Đã cập nhật mô tả
+    lbl.Text="Auto Haki (Giữ R trong 6s, nghỉ 1s)" 
     
     local btn=Instance.new("TextButton",p)
     btn.Size=UDim2.new(0,140,0,32) 
@@ -432,7 +442,7 @@ do
     end)
 end
 
--- VÒNG LẶP AUTO HAKI MỚI: GIỮ PHÍM THEO CHU KỲ
+-- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ
 task.spawn(function()
     while true do
         if AutoHakiState and player.Character then
@@ -459,9 +469,9 @@ task.spawn(function()
 end)
 
 
-local DropPanel = panels["Drop"]
+local FruitMixPanel = panels["Fruit Mix"] -- ĐÃ ĐỔI TÊN
 do
-    local p = DropPanel
+    local p = FruitMixPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
     label.Size = UDim2.new(1, 0, 0, 24)
@@ -470,9 +480,10 @@ do
     label.Font = Enum.Font.GothamBold
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(0, 255, 170) 
-    label.Text = "AUTO DROP ITEMS"
+    label.Text = "AUTO DROP ITEMS (FRUIT MIX)"
     y = y + 30
 
+    -- NÚT AUTO DROP ITEM
     local dropBtn = Instance.new("TextButton", p)
     dropBtn.Size = UDim2.new(0, 280, 0, 32) 
     dropBtn.Position = UDim2.new(0, 10, 0, y)
@@ -493,17 +504,92 @@ do
     end)
     y = y + 42
     
+    -- NÚT AUTO FRUIT MIX (COLLECT CHEST)
+    local collectBtn = Instance.new("TextButton", p)
+    collectBtn.Size = UDim2.new(0, 280, 0, 32) 
+    collectBtn.Position = UDim2.new(0, 10, 0, y)
+    collectBtn.Text = "Auto Fruit Mix (Loot Chests): OFF" -- ĐÃ ĐỔI TÊN
+    collectBtn.Font = Enum.Font.GothamBold
+    collectBtn.TextSize = 13
+    collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    collectBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 50) 
+    collectBtn.BackgroundTransparency = 0.15
+    collectBtn.BorderSizePixel = 0
+    Instance.new("UICorner", collectBtn).CornerRadius = UDim.new(0, 6)
+    
+    collectBtn.MouseButton1Click:Connect(function()
+        AutoCollectChestState = not AutoCollectChestState
+        collectBtn.Text = "Auto Fruit Mix (Loot Chests): " .. (AutoCollectChestState and "ON" or "OFF")
+        collectBtn.BackgroundColor3 = AutoCollectChestState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(150, 150, 50)
+        collectBtn.BackgroundTransparency = AutoCollectChestState and 0.1 or 0.15
+    end)
+    y = y + 42
+    
+    -- PHẠM VI TÙY CHỈNH
+    local radiusLabel = Instance.new("TextLabel", p)
+    radiusLabel.Size = UDim2.new(0, 180, 0, 24)
+    radiusLabel.Position = UDim2.new(0, 10, 0, y)
+    radiusLabel.BackgroundTransparency = 1
+    radiusLabel.Font = Enum.Font.Gotham
+    radiusLabel.TextSize = 12
+    radiusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    radiusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    local function updateRadiusLabel()
+        radiusLabel.Text = "Phạm vi Loot Rada (100-350): " .. CollectChestRadius
+    end
+    updateRadiusLabel()
+    y = y + 28
+    
+    local radiusInput = Instance.new("TextBox", p)
+    radiusInput.Size = UDim2.new(0, 80, 0, 32)
+    radiusInput.Position = UDim2.new(0, 10, 0, y)
+    radiusInput.PlaceholderText = "100-350"
+    radiusInput.Text = tostring(CollectChestRadius)
+    radiusInput.Font = Enum.Font.Gotham
+    radiusInput.TextSize = 14
+    radiusInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    radiusInput.BackgroundColor3 = Color3.fromRGB(40, 40, 44)
+    radiusInput.BackgroundTransparency = 0.15
+    radiusInput.TextXAlignment = Enum.TextXAlignment.Center
+    Instance.new("UICorner", radiusInput).CornerRadius = UDim.new(0, 6)
+    
+    local setRadiusBtn = Instance.new("TextButton", p)
+    setRadiusBtn.Size = UDim2.new(0, 100, 0, 32)
+    setRadiusBtn.Position = UDim2.new(0, 100, 0, y)
+    setRadiusBtn.Text = "SET"
+    setRadiusBtn.Font = Enum.Font.GothamBold
+    setRadiusBtn.TextSize = 14
+    setRadiusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    setRadiusBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 80)
+    setRadiusBtn.BackgroundTransparency = 0.15
+    Instance.new("UICorner", setRadiusBtn).CornerRadius = UDim.new(0, 6)
+    
+    setRadiusBtn.MouseButton1Click:Connect(function()
+        local newRadius = tonumber(radiusInput.Text)
+        if newRadius and newRadius >= 100 and newRadius <= 350 then
+            CollectChestRadius = newRadius
+            updateRadiusLabel()
+            radiusInput.Text = tostring(CollectChestRadius)
+        else
+            radiusInput.Text = "LỖI! 100-350"
+            task.wait(1)
+            radiusInput.Text = tostring(CollectChestRadius)
+        end
+    end)
+    y = y + 42
+    
     local note = Instance.new("TextLabel", p)
-    note.Size = UDim2.new(1, -20, 0, 24) 
-    note.Position = UDim2.new(0, 10, 0, y)
+    note.Size = UDim2.new(1, -20, 0, 40)
+    note.Position = UDim2.new(0, 10, 0, y) 
     note.BackgroundTransparency = 1
     note.Font = Enum.Font.Gotham
     note.TextSize = 12
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    note.Text = "Drop fruit mix"
+    note.Text = string.format("Auto Fruit Mix: Tìm Model '%s', Teleport & click Part '%s'. Phạm vi Rada đi theo nhân vật.", CHEST_MODEL_NAME, CLICKABLE_PART_NAME)
 end
+
 
 local UtilityPanel = panels["Utility"]
 do
@@ -539,17 +625,6 @@ do
         godModeBtn.BackgroundTransparency = GodModeState and 0.1 or 0.15
     end)
     y = y + 42
-    
-    local note = Instance.new("TextLabel", p)
-    note.Size = UDim2.new(1, -20, 0, 60)
-    note.Position = UDim2.new(0, 10, 0, y) 
-    note.BackgroundTransparency = 1
-    note.Font = Enum.Font.Gotham
-    note.TextSize = 12
-    note.TextColor3 = Color3.fromRGB(255, 170, 170)
-    note.TextXAlignment = Enum.TextXAlignment.Left
-    note.TextWrap = true
-    note.Text = "God Mode: Đặt máu về tối đa liên tục (Client-Sided). An toàn khỏi NPC, nhưng không chống được Server Kill/Ban."
 end
 
 
@@ -659,6 +734,62 @@ task.spawn(function()
     end
 end)
 
+-- VÒNG LẶP AUTO COLLECT CHEST (RADA MODE)
+task.spawn(function()
+    while true do
+        if AutoCollectChestState and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
+            
+            local targetChest = nil
+            local shortestDistance = CollectChestRadius + 1
+            local hrpPosition = hrp.Position -- Lấy vị trí hiện tại của nhân vật (Tâm Rada)
+
+            -- Tìm kiếm đối tượng thùng/hòm gần nhất trong phạm vi CollectChestRadius
+            for _, child in ipairs(workspace:GetDescendants()) do
+                if child.Name == CHEST_MODEL_NAME and child:IsA("Model") then
+                    local clickablePart = child:FindFirstChild(CLICKABLE_PART_NAME)
+                    
+                    if clickablePart and clickablePart:FindFirstChildOfClass("ClickDetector") then
+                        if clickablePart:IsA("BasePart") then
+                            local distance = (hrpPosition - clickablePart.Position).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                targetChest = clickablePart
+                            end
+                        end
+                    end
+                end
+            end
+
+            if targetChest then
+                -- 1. Teleport đến gần đối tượng để có thể click
+                pcall(function()
+                    local targetPos = targetChest.Position
+                    -- Teleport đến vị trí cách target 5 studs
+                    local offset = (hrpPosition - targetPos).Unit * 5
+                    hrp.CFrame = CFrame.new(targetPos + offset) 
+                end)
+                
+                task.wait(0.1) -- Đợi Teleport hoàn thành
+                
+                -- 2. Tìm ClickDetector và gửi lệnh click
+                local clickDetector = targetChest:FindFirstChildOfClass("ClickDetector")
+                if clickDetector then
+                    pcall(function()
+                        -- Gửi lệnh click (tham số thứ 2 là khoảng cách)
+                        clickDetector:MouseClick(player, targetChest.Position, 0.1)
+                    end)
+                end
+                
+                task.wait(0.5) -- Đợi 0.5 giây trước khi tìm hòm tiếp theo
+            else
+                task.wait(1.0) -- Không tìm thấy hòm nào trong phạm vi, đợi lâu hơn
+            end
+        else
+            task.wait(0.5) 
+        end
+    end
+end)
+
 
 local foot=Instance.new("TextLabel")
 foot.Size=UDim2.new(1,0,0,16) 
@@ -667,7 +798,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v20.4 (Auto Haki Hold Cycle)"
+foot.Text="NTBA • Farm Hub v20.7 (Fruit Mix & Loot)"
 foot.Parent=Main
 
-print("NTBA Farm Hub v20.4 - Auto Haki logic updated to Hold R for 6s, Wait 1s.")
+print("NTBA Farm Hub v20.7 - Fruit Mix logic activated.")
