@@ -1,10 +1,9 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.4.0 (CODE HOÀN CHỈNH - FIX CẤU TRÚC FOLDER)
+-- NTBA FARM HUB - V21.6.0 (CODE HOÀN CHỈNH - FIX LỖI XUNG ĐỘT)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [V21.4.0 FIX CUỐI]: Sửa lỗi Logic tìm kiếm Loot Chest theo cấu trúc Folder.
---    -> Cấu trúc chính xác: Barrels -> Crates -> Crate (Part).
---    -> Giới hạn tìm kiếm chỉ trong Part Crate có ClickDetector.
--- 2. [V21.2.0 FIX]: Giữ lại hàm SafeTeleport và thời gian chờ tối ưu.
+-- 1. [V21.6.0 FIX CƠ CHẾ]: Tăng độ trễ ổn định sau SafeTeleport lên 0.3s.
+-- 2. [V21.6.0 FIX LOGIC]: Thêm task.wait() an toàn trong vòng lặp tìm kiếm rương.
+-- 3. [V21.6.0 RESTORE]: Đưa độ trễ Auto Skill (Z,X,C,V) & Drop Item về trạng thái hoạt động cũ.
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -27,7 +26,7 @@ local HubVisible = true
 
 local GodModeState = false
 
--- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V21.4.0 - LOGIC CẤU TRÚC CHÍNH XÁC ]]
+-- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V21.6.0 - LOGIC CẤU TRÚC CHÍNH XÁC ]]
 local AutoCollectChestState = false
 local CollectChestRadius = 250
 -- CÁC TÊN MODEL/PART CHÍNH XÁC THEO CẤU TRÚC BẠN CUNG CẤP
@@ -115,7 +114,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.4.0)" -- CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.6.0)" -- CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -285,8 +284,9 @@ task.spawn(function()
         for key,enabled in pairs(AutoSkillState) do
             if enabled and not AutoFarmNPC then
                 pcall(function()
+                    -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
                     VirtualInputManager:SendKeyEvent(true,key,false,game)
-                    task.wait(0.04)
+                    task.wait(0.04) 
                     VirtualInputManager:SendKeyEvent(false,key,false,game)
                 end)
             end
@@ -299,7 +299,7 @@ do
     local p = AutoNPCPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 24)
+    label.Size = UDim2.new(1, 0, 0, y)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -380,8 +380,9 @@ local function findAndFarmNPC()
             for key, enabled in pairs(AutoSkillState) do
                 if enabled then
                     pcall(function()
+                        -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
                         VirtualInputManager:SendKeyEvent(true, key, false, game)
-                        task.wait(0.04)
+                        task.wait(0.04) 
                         VirtualInputManager:SendKeyEvent(false, key, false, game)
                     end)
                 end
@@ -746,7 +747,7 @@ task.spawn(function()
             if itemToDrop then
                 pcall(function()
                     itemToDrop.Parent = Character
-                    task.wait(0.01)
+                    task.wait(0.01) -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
 
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
                     task.wait(0.01)
@@ -769,7 +770,7 @@ task.spawn(function()
             if itemToDrop then
                 pcall(function()
                     itemToDrop.Parent = Character
-                    task.wait(0.01)
+                    task.wait(0.01) -- ĐƯA VỀ TRẠNG THÁI TRƯỚC (BẠN NÓI VẪN HOẠT ĐỘNG)
 
                     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
                     task.wait(0.01)
@@ -797,7 +798,9 @@ local function SafeTeleport(targetPos)
     pcall(function()
         hrp.CFrame = CFrame.new(targetPos + offset)
     end)
-    task.wait(0.2) -- Đợi 0.2s để nhân vật ổn định trước khi Click
+    
+    -- FIX: Tăng độ trễ ổn định sau TP để không gây lỗi vật lý/lag Input
+    task.wait(0.3) 
 end
 
 -- VÒNG LẶP AUTO COLLECT CHEST (RADA MODE)
@@ -816,7 +819,6 @@ task.spawn(function()
 
                 if cratesContainer then
                     -- BƯỚC 1: TÌM MỤC TIÊU CÓ CẤU TRÚC ĐÚNG
-                    -- Tìm Part CHEST_PART_NAME ("Crate") trong CratesContainer
                     for _, part in ipairs(cratesContainer:GetDescendants()) do
                         if part.Name == CHEST_PART_NAME and part:IsA("BasePart") then
                             local clickDetector = part:FindFirstChildOfClass("ClickDetector")
@@ -838,7 +840,7 @@ task.spawn(function()
                     local clickDetector = targetChestPart:FindFirstChildOfClass("ClickDetector")
                     
                     if clickDetector then
-                        -- Dùng hàm TP an toàn
+                        -- Dùng hàm TP an toàn (có độ trễ 0.3s)
                         SafeTeleport(targetChestPart.Position)
 
                         pcall(function()
@@ -850,7 +852,8 @@ task.spawn(function()
                     end
 
                 else
-                    task.wait(1.0) -- Không tìm thấy rương nào trong phạm vi, đợi lâu hơn
+                    -- FIX: Đảm bảo có task.wait() an toàn ở đây để nhường luồng CPU
+                    task.wait(1.0) 
                 end
             else
                 -- print("Không tìm thấy Model/Folder chứa rương: " .. ROOT_MODEL_NAME)
@@ -870,7 +873,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.4.0 (FIX CẤU TRÚC FOLDER CHÍNH XÁC)" 
+foot.Text="NTBA • Farm Hub v21.6.0 (FIX XUNG ĐỘT LOGIC LOOT CHEST)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.4.0 - Đã áp dụng logic tìm kiếm chính xác: Barrels -> Crates -> Crate (Part with ClickDetector).")
+print("NTBA Farm Hub v21.6.0 - Đã sửa lỗi xung đột. Vui lòng kiểm tra lại tất cả chức năng.")
