@@ -1,11 +1,3 @@
-local RF_RareDevilfruit = {
-    "Smoke", "Sand", "Rumble", "Quake", "Phoenix", "Ope", "Magma", "Light",
-    "Hollow", "Alice", "Gas", "Flare", "Dark", "Chilly", "Candy",
-    "Plasma", "Gravity", "Vampire", "Venom", "Snow",
-    "Shadow", "Control", "Dough", "Leopard", "Dragon", "Kilo", "Buddha",
-    "Luck",
-}
-
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -25,12 +17,8 @@ local AutoDropItem = false
 local Hotkey = Enum.KeyCode.RightControl
 local HubVisible = true
 
-local AutoFruitState = {} 
-for _, fruitName in ipairs(RF_RareDevilfruit) do
-    AutoFruitState[fruitName] = false
-end
-local PICKUP_RANGE = math.huge 
-local billboardGuiMap = {}
+-- CHỈ CÒN BIẾN GOD MODE
+local GodModeState = false 
 
 local ITEM_DROP_LIST = {
     ["Apple"] = true,
@@ -53,123 +41,15 @@ local function findDroppableItemInList()
     return nil
 end
 
-local function createBillboardGuiForFruit(model, fruitName, offsetY)
-    if model:FindFirstChild("Head") then
-        if not billboardGuiMap[model] then billboardGuiMap[model] = {} end
-        
-        if billboardGuiMap[model][fruitName] then
-            billboardGuiMap[model][fruitName]:Destroy()
-        end
-        
-        local billboardGui = Instance.new("BillboardGui")
-        billboardGui.Adornee = model.Head
-        billboardGui.Parent = model.Head
-        billboardGui.Size = UDim2.new(0, 200, 0, 50)
-        billboardGui.StudsOffset = Vector3.new(0, offsetY, 0)
-        
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Parent = billboardGui
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.Text = fruitName .. "!"
-        textLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.TextScaled = true
-        textLabel.Font = Enum.Font.GothamBold
-        
-        billboardGuiMap[model][fruitName] = billboardGui
-    end
-end
-
-local function removeBillboardGuiForFruit(model, fruitName)
-    if billboardGuiMap[model] and billboardGuiMap[model][fruitName] then
-        billboardGuiMap[model][fruitName]:Destroy()
-        billboardGuiMap[model][fruitName] = nil
-    end
-end
-
--- HÀM NHẶT QUẢ ĐÃ ĐƯỢC CẬP NHẬT (BỎ TELEPORT)
-local function pickUpFruit(v, fruitName, pickupRemote)
-    coroutine.wrap(function()
-        if hrp and hrp.Parent and v.PrimaryPart then
-            
-            -- BỎ PHẦN TELEPORT (hrp.CFrame = ...)
-            
-            if pickupRemote and pickupRemote:IsA("RemoteEvent") then
-                print("!!! Auto-Picked up (NO TELEPORT): " .. fruitName .. " bằng RemoteEvent FireServer !!!")
-                pcall(function()
-                    pickupRemote:FireServer()
-                end)
-            else
-                -- Trường hợp dự phòng này không xảy ra nếu RemoteEvent bị thay đổi tên
-                print("!!! WARNING: RemoteEvent không được tìm thấy cho " .. fruitName .. " !!!")
-            end
-            
-            task.wait(1.5) -- Chờ đủ lâu để quả biến mất/nhặt xong
-            return 
-        end
-    end)()
-end
-
-local function checkFruitsInWorkspace()
-    local offsetY = 3 
-    for i, v in pairs(workspace:GetChildren()) do  
-        if v:IsA("Model") and v:FindFirstChild("PrimaryPart") then 
-            for _, fruitName in ipairs(RF_RareDevilfruit) do
-                local fruitInstance = v:FindFirstChild(fruitName .. " Fruit") or v:FindFirstChild("Lock Fruit")
-                
-                if fruitInstance and v.PrimaryPart then
-                    createBillboardGuiForFruit(v, fruitName, offsetY)
-                    offsetY = offsetY + 1
-                    
-                    if AutoFruitState[fruitName] and hrp and hrp.Parent and v.PrimaryPart then
-                        
-                        -- Tìm Remote Event để nhặt
-                        local pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Relay") and fruitInstance.ClickSelector.Relay:FindFirstChild("Pickup")
-                        if not pickupRemote then
-                            pickupRemote = fruitInstance:FindFirstChild("ClickSelector") and fruitInstance.ClickSelector:FindFirstChild("Pickup")
-                        end
-
-                        if pickupRemote and pickupRemote:IsA("RemoteEvent") then
-                            pickUpFruit(v, fruitName, pickupRemote)
-                        end
-                    end
-                else
-                    removeBillboardGuiForFruit(v, fruitName)
-                end
-            end
-        end
-    end
-end
-
-local function checkFruitsInPlayers()
-    local offsetY = 3
-    for _, p in pairs(Players:GetChildren()) do  
-        if p.Character and p.Character:FindFirstChild("Head") and p ~= player then
-            local char = p.Character
-            for _, fruitName in ipairs(RF_RareDevilfruit) do
-                local fruitInBackpack = p.Backpack:FindFirstChild(fruitName .. " Fruit")
-                local fruitEquipped = char:FindFirstChild(fruitName .. " Fruit")
-                
-                if fruitInBackpack or fruitEquipped then
-                    createBillboardGuiForFruit(char, fruitName, offsetY)
-                    offsetY = offsetY + 1 
-                else
-                    removeBillboardGuiForFruit(char, fruitName)
-                end
-            end
-        end
-    end
-end
-
--- Vòng lặp tìm trái cây riêng - Tăng tốc độ kiểm tra
-task.spawn(function()
-    while true do
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            hrp = player.Character.HumanoidRootPart
-            checkFruitsInWorkspace()
-            checkFruitsInPlayers()
-        end
-        task.wait(0.1) -- Giảm thời gian chờ xuống 0.1s để check liên tục hơn
+-- TỰ ĐỘNG CẬP NHẬT TRONG TRƯỜNG HỢP NHÂN VẬT CHẾT/TÁI SINH
+player.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    hrp = Character:WaitForChild("HumanoidRootPart")
+    
+    -- Đảm bảo God Mode được bật lại sau khi tái sinh
+    if GodModeState then
+        task.wait(0.2) 
+        -- God Mode sẽ được vòng lặp dưới đây xử lý tiếp
     end
 end)
 
@@ -220,7 +100,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Fruit Hub"
+TitleLabel.Text = "NTBA • Farm Hub (V20.4)"
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -292,14 +172,15 @@ Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
+-- Danh sách tab đã được cập nhật
+local tabs = {"AutoFarm","AutoNPC","AutoHaki","Drop","Utility","Settings"}
+local tabButtons, panels = {}, {}
+
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
 SidebarLayout.Padding = UDim.new(0,6)
 SidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 SidebarLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 SidebarLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-
-local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit","Drop","Settings"}
-local tabButtons, panels = {}, {}
 
 local Panel_X_Start = Sidebar_W + 10 
 local Panel_Y_Start = 32 + 10      
@@ -385,7 +266,7 @@ do
 end
 task.spawn(function()
     while true do
-        task.wait(0.18)
+        task.wait(0.5) 
         for key,enabled in pairs(AutoSkillState) do
             if enabled and not AutoFarmNPC then 
                 pcall(function()
@@ -461,7 +342,7 @@ local function findAndFarmNPC()
 
     for _, v in ipairs(workspace:GetChildren()) do
         if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-            if v.Name ~= player.Name and not v:FindFirstChild("LockFruit") then 
+            if v.Name ~= player.Name then 
                 local npcHR = v:FindFirstChild("HumanoidRootPart")
                 if npcHR and hrp then
                     local distance = (hrp.Position - npcHR.Position).Magnitude
@@ -506,6 +387,19 @@ task.spawn(function()
     end
 end)
 
+-- VÒNG LẶP GOD MODE
+task.spawn(function()
+    while task.wait(0.01) do
+        if GodModeState and player.Character then
+            local human = player.Character:FindFirstChildOfClass("Humanoid")
+            if human and human.Health > 0 and human.MaxHealth > 0 then
+                -- Đặt lại máu về tối đa
+                human.Health = human.MaxHealth
+            end
+        end
+    end
+end)
+
 
 local AutoHakiPanel = panels["AutoHaki"]
 do
@@ -517,8 +411,8 @@ do
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 14
     lbl.TextColor3 = Color3.fromRGB(220,220,220)
-    lbl.Text="Auto Haki (spam R)"
-
+    lbl.Text="Auto Haki (Giữ R trong 6s, nghỉ 1s)" -- Đã cập nhật mô tả
+    
     local btn=Instance.new("TextButton",p)
     btn.Size=UDim2.new(0,140,0,32) 
     btn.Position=UDim2.new(0,10,0,40)
@@ -538,91 +432,32 @@ do
     end)
 end
 
+-- VÒNG LẶP AUTO HAKI MỚI: GIỮ PHÍM THEO CHU KỲ
 task.spawn(function()
     while true do
-        if AutoHakiState then
+        if AutoHakiState and player.Character then
+            
+            -- 1. Bấm và GIỮ R (6 giây)
             pcall(function()
-                VirtualInputManager:SendKeyEvent(true,"R",false,game)
-                task.wait(0.06)
+                VirtualInputManager:SendKeyEvent(true,"R",false,game) 
+            end)
+            
+            task.wait(6.0) -- Giữ phím R trong 6 giây
+            
+            -- 2. NHẢ R
+            pcall(function()
                 VirtualInputManager:SendKeyEvent(false,"R",false,game)
             end)
+            
+            task.wait(1.0) -- Đợi 1 giây trước khi lặp lại chu kỳ
+            
+        else
+            -- Nếu tắt, đợi ngắn hơn để giảm tải CPU
+            task.wait(0.5) 
         end
-        task.wait(6.5)
     end
 end)
 
-
-local FruitPanel = panels["Fruit"]
-do
-    local p = FruitPanel
-    local y = 6
-    local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 24)
-    label.Position = UDim2.new(0, 0, 0, y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(255, 255, 0) 
-    label.Text = "AUTO FRUIT PICKUP (NO TELEPORT)" -- Đã đổi tên
-    y = y + 30
-    
-    local scrollFrame = Instance.new("ScrollingFrame", p)
-    scrollFrame.Size = UDim2.new(1, 0, 1, -y)
-    scrollFrame.Position = UDim2.new(0, 0, 0, y)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
-    
-    
-    local buttonHeight = 30
-    local spacing = 5
-    local buttonMargin = 10 
-    local innerSpacing = 10 
-    
-    
-    local buttonWidth = (Panel_W - (buttonMargin * 2) - innerSpacing) / 2
-    local currentY = buttonMargin
-    
-    for i, fruitName in ipairs(RF_RareDevilfruit) do
-        local btn = Instance.new("TextButton", scrollFrame)
-        btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
-        
-        
-        local columnIndex = (i - 1) % 2
-        local rowIndex = math.floor((i - 1) / 2)
-        
-        
-        local posX = buttonMargin + columnIndex * (buttonWidth + innerSpacing)
-        local posY = buttonMargin + rowIndex * (buttonHeight + spacing)
-
-        btn.Position = UDim2.new(0, posX, 0, posY)
-        
-        btn.Text = fruitName .. ": OFF"
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 13
-        btn.TextColor3 = Color3.fromRGB(230, 230, 230)
-        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 62)
-        btn.BackgroundTransparency = 0.15
-        btn.BorderSizePixel = 0
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-        
-        if columnIndex == 0 then
-            currentY = btn.Position.Y.Offset
-        end
-
-        btn.MouseButton1Click:Connect(function()
-            local state = not AutoFruitState[fruitName]
-            AutoFruitState[fruitName] = state
-            btn.Text = fruitName .. ": " .. (state and "ON" or "OFF")
-            btn.BackgroundColor3 = state and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(60, 60, 62)
-            btn.BackgroundTransparency = state and 0.1 or 0.15
-        end)
-    end
-    
-    local numRows = math.ceil(#RF_RareDevilfruit / 2)
-    local totalHeight = numRows * (buttonHeight + spacing) + buttonMargin + spacing 
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight) 
-
-end
 
 local DropPanel = panels["Drop"]
 do
@@ -659,7 +494,7 @@ do
     y = y + 42
     
     local note = Instance.new("TextLabel", p)
-    note.Size = UDim2.new(1, -20, 0, 80)
+    note.Size = UDim2.new(1, -20, 0, 24) 
     note.Position = UDim2.new(0, 10, 0, y)
     note.BackgroundTransparency = 1
     note.Font = Enum.Font.Gotham
@@ -667,9 +502,56 @@ do
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    note.Text = "Chức năng này sẽ tìm và drop BẤT KỲ Tool/Fruit nào trong túi đồ có tên nằm trong danh sách đen (Apple, Cantaloup, Cantaloupe, Banana, Green Apple, Coconut, Pumpkin, Prickly Pear, Melon). Cơ chế: Ép trang bị -> Backspace."
-    y = y + 90 
+    note.Text = "Drop fruit mix"
 end
+
+local UtilityPanel = panels["Utility"]
+do
+    local p = UtilityPanel
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, 24)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(85, 170, 255) 
+    label.Text = "CHỨC NĂNG TIỆN ÍCH KHÁC"
+    y = y + 30
+
+    -- NÚT GOD MODE
+    local godModeBtn = Instance.new("TextButton", p)
+    godModeBtn.Size = UDim2.new(0, 240, 0, 32) 
+    godModeBtn.Position = UDim2.new(0, 10, 0, y)
+    godModeBtn.Text = "God Mode (Bất Tử): OFF"
+    godModeBtn.Font = Enum.Font.GothamBold
+    godModeBtn.TextSize = 13
+    godModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    godModeBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 50) 
+    godModeBtn.BackgroundTransparency = 0.15
+    godModeBtn.BorderSizePixel = 0
+    Instance.new("UICorner", godModeBtn).CornerRadius = UDim.new(0, 6)
+    
+    godModeBtn.MouseButton1Click:Connect(function()
+        GodModeState = not GodModeState
+        godModeBtn.Text = "God Mode (Bất Tử): " .. (GodModeState and "ON" or "OFF")
+        godModeBtn.BackgroundColor3 = GodModeState and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(0, 150, 50)
+        godModeBtn.BackgroundTransparency = GodModeState and 0.1 or 0.15
+    end)
+    y = y + 42
+    
+    local note = Instance.new("TextLabel", p)
+    note.Size = UDim2.new(1, -20, 0, 60)
+    note.Position = UDim2.new(0, 10, 0, y) 
+    note.BackgroundTransparency = 1
+    note.Font = Enum.Font.Gotham
+    note.TextSize = 12
+    note.TextColor3 = Color3.fromRGB(255, 170, 170)
+    note.TextXAlignment = Enum.TextXAlignment.Left
+    note.TextWrap = true
+    note.Text = "God Mode: Đặt máu về tối đa liên tục (Client-Sided). An toàn khỏi NPC, nhưng không chống được Server Kill/Ban."
+end
+
 
 local SettingsPanel = panels["Settings"]
 do
@@ -691,10 +573,6 @@ do
     keyLabel.Size = UDim2.new(0, 180, 0, 24)
     keyLabel.Position = UDim2.new(0, 10, 0, y)
     keyLabel.BackgroundTransparency = 1
-    keyLabel.Font = Enum.Font.Gotham
-    keyLabel.TextSize = 12
-    keyLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    keyLabel.TextXAlignment = Enum.TextXAlignment.Left
     local function updateKeyLabel()
         keyLabel.Text = "Nút hiện tại: " .. tostring(Hotkey.Name)
     end
@@ -789,7 +667,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Fruit Hub v16.9 (No-Teleport Pickup)"
+foot.Text="NTBA • Farm Hub v20.4 (Auto Haki Hold Cycle)"
 foot.Parent=Main
 
-print("NTBA Fruit Hub v16.9 - Switched to NO-TELEPORT FRUIT PICKUP. If this fails, the RemoteEvent name is likely wrong for the current game version.")
+print("NTBA Farm Hub v20.4 - Auto Haki logic updated to Hold R for 6s, Wait 1s.")
