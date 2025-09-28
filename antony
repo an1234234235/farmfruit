@@ -856,4 +856,4 @@ foot.TextColor3 = Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Farm Hub v20.8.1 (Thêm Drop +)"
 foot.Parent=Main
 
-print("NTBA Farm Hub v20.8.1 - Drop Plus logic activated.")
+print("NTBA Farm Hub v21.")
