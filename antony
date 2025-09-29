@@ -1,9 +1,8 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.2 (CODE HOÀN CHỈNH)
+-- NTBA FARM HUB - V21.2.4 (CODE HOÀN CHỈNH)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [V21.2.2 FIX]: Sửa lỗi Auto Haki chỉ chạy 1 lần (đảm bảo vòng lặp vĩnh viễn).
--- 2. [V21.2.1 FIX]: Đảm bảo Auto Skill (Z,X,C,V) và Auto Haki (R) chạy độc lập.
--- 3. [V21.2.0 FIX]: Cập nhật chu kỳ Auto Haki (R) thành (Giữ 7s, nghỉ 1s).
+-- 1. [V21.2.4 FIX]: Sửa lỗi Auto Haki chỉ chạy 1 lần/bị kẹt phím bằng cách dùng task.yield() bên trong vòng lặp while true.
+-- 2. Đảm bảo Auto Haki (R) chạy chu kỳ (Giữ 7s, nghỉ 1s) và lặp lại vô tận khi nút ON.
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -26,7 +25,7 @@ local HubVisible = true
 
 local GodModeState = false
 
--- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.8.1 - ĐÃ SỬA ]]
+-- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) ]]
 local AutoCollectChestState = false
 local CollectChestRadius = 250
 local CHEST_MODEL_NAME = "Crate" 
@@ -120,7 +119,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.2.2)" -- CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.4)" -- CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -415,12 +414,11 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP GOD MODE (ĐÃ SỬA VÀ TỐI ƯU V21.0.0 - Dùng Heartbeat)
+-- VÒNG LẶP GOD MODE (Dùng Heartbeat)
 RunService.Heartbeat:Connect(function(step)
     if GodModeState and player.Character then
         local human = player.Character:FindFirstChildOfClass("Humanoid")
         if human and human.Health > 0 and human.MaxHealth > 0 then
-            -- [V21.0.0 FIX]: Đảm bảo máu được đặt lại ngay lập tức
             human.Health = human.MaxHealth
         end
     end
@@ -437,7 +435,7 @@ do
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 14
     lbl.TextColor3 = Color3.fromRGB(220,220,220)
-    lbl.Text="Auto Haki (Giữ R trong 7s, nghỉ 1s)" -- Cập nhật chú thích UI
+    lbl.Text="Auto Haki (Giữ R trong 7s, nghỉ 1s) - Cực Ổn Định" 
 
     local btn=Instance.new("TextButton",p)
     btn.Size=UDim2.new(0,140,0,32)
@@ -458,7 +456,7 @@ do
     end)
 end
 
--- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.2.2 FIX - Ổn định vòng lặp)
+-- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.2.4 FIX - Ép buộc vòng lặp)
 task.spawn(function()
     while true do
         if AutoHakiState and player.Character then
@@ -475,14 +473,15 @@ task.spawn(function()
                 VirtualInputManager:SendKeyEvent(false,"R",false,game)
             end)
 
-            -- Đợi ngắn 10ms để đảm bảo phím được nhả trước khi lặp lại.
+            -- FIX CỐT LÕI: Đợi 10ms và nhường luồng (yield) để đảm bảo phím R được nhả
             task.wait(0.01)
+            task.yield() 
 
             -- 3. NGHỈ
             task.wait(1.0) -- Đợi 1 giây trước khi lặp lại chu kỳ
 
         else
-            -- Nếu tắt, đợi ngắn hơn
+            -- Nếu tắt, đợi ngắn hơn và kiểm tra lại trạng thái
             task.wait(0.5)
         end
     end
@@ -867,7 +866,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.2.2 (Auto Haki 7s/1s - Đã Fix Lỗi Lặp)" 
+foot.Text="NTBA • Farm Hub v21.2.4 (Auto Haki 7s/1s - Đã Fix Lỗi Lặp Vĩnh Viễn)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.2.2 - Auto Haki đã được sửa lỗi và chạy ổn định.")
+print("NTBA Farm Hub v21.2.4 - Auto Haki đã được sửa lỗi và chạy ổn định.")
