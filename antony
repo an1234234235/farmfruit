@@ -1,8 +1,8 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.7 (ĐÃ BỎ AUTO LOOT CHEST/FRUIT MIX)
+-- NTBA FARM HUB - V21.2.4 (CODE HOÀN CHỈNH)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. Xóa hoàn toàn chức năng Auto Loot Chest (Fruit Mix) và các biến liên quan.
--- 2. Giữ nguyên và tối ưu các chức năng Auto Farm NPC, Auto Haki và Auto Drop Item.
+-- 1. [V21.2.4 FIX]: Sửa lỗi Auto Haki chỉ chạy 1 lần/bị kẹt phím bằng cách dùng task.yield() bên trong vòng lặp while true.
+-- 2. Đảm bảo Auto Haki (R) chạy chu kỳ (Giữ 7s, nghỉ 1s) và lặp lại vô tận khi nút ON.
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -13,171 +13,76 @@ local player = Players.LocalPlayer
 local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
 local Backpack = player:WaitForChild("Backpack")
-local CoreGui = game:GetService("CoreGui")
 
--- ================================================================= --
--- BIẾN HỆ THỐNG CHUNG & AUTO HAKI
--- ================================================================= --
 local AutoFarmNPC = false
 local FarmRadius = 150
 local AutoSkillState={Z=false,X=false,C=false,V=false}
+local AutoHakiState=false
 local AutoDropItem = false
-local AutoDropItemPlus = false 
+local AutoDropItemPlus = false 
 local Hotkey = Enum.KeyCode.RightControl
 local HubVisible = true
+
 local GodModeState = false
 
--- BIẾN AUTO HAKI
-local DEFAULT_KEY = "R"
-local SECONDARY_KEY = "Q" 
-local DEFAULT_INTERVAL = 0.15
-local SAMPLE_WINDOW = 6
-local MIN_INTERVAL = 0.02
-local MAX_INTERVAL = 3
+-- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) ]]
+local AutoCollectChestState = false
+local CollectChestRadius = 250
+local CHEST_MODEL_NAME = "Crate" 
+local CLICKABLE_PART_NAME = "Crate" 
+-- ---------------------------------------------------
 
-local isRunningR = false  -- Trạng thái chạy cho phím R (chức năng chính)
-local isRunningQ = false  -- Trạng thái chạy cho phím Q
-local currentMode = "Adaptive"
-
-local CooldownData = {
-    pressCount = 0,
-    successCount = 0,
-    lastSamples = {},
-    lastPressTime = 0
-}
-local HakiUIControls = {} -- Lưu trữ các đối tượng UI cho Haki
-
--- DANH SÁCH DROP CŨ VÀ MỚI (KHÔNG THAY ĐỔI)
+-- DANH SÁCH DROP CŨ (TRÁI CÂY, MIX THƯỜNG)
 local ITEM_DROP_LIST = {
-    ["Apple"] = true, ["Cantaloup"] = true, ["Cantaloupe"] = true, ["Banana"] = true,
-    ["Green Apple"] = true, ["Coconut"] = true, ["Pumpkin"] = true,
-    ["Prickly Pear"] = true, ["Melon"] = true,
+    ["Apple"] = true,
+    ["Cantaloup"] = true,
+    ["Cantaloupe"] = true,
+    ["Banana"] = true,
+    ["Green Apple"] = true,
+    ["Coconut"] = true,
+    ["Pumpkin"] = true,
+    ["Prickly Pear"] = true,
+    ["Melon"] = true,
 }
+
+-- DANH SÁCH DROP MỚI (CÓ DẤU +)
 local ITEM_DROP_PLUS_LIST = {
-    ["Cider+"] = true, ["Lemonade+"] = true, ["Juice+"] = true, ["Smoothie+"] = true,
+    ["Cider+"] = true,
+    ["Lemonade+"] = true,
+    ["Juice+"] = true,
+    ["Smoothie+"] = true,
 }
 
 local function findDroppableItemInList(dropList)
-    for _, item in ipairs(Backpack:GetChildren()) do
-        if (item:IsA("Tool") or item:IsA("HopperBin")) and dropList[item.Name] then
-            return item
-        end
-    end
-    return nil
+    for _, item in ipairs(Backpack:GetChildren()) do
+        if (item:IsA("Tool") or item:IsA("HopperBin")) and dropList[item.Name] then
+            return item
+        end
+    end
+    return nil
 end
 
+-- TỰ ĐỘNG CẬP NHẬT TRONG TRƯỜNG HỢP NHÂN VẬT CHẾT/TÁI SINH
 player.CharacterAdded:Connect(function(newCharacter)
-    Character = newCharacter
-    hrp = Character:WaitForChild("HumanoidRootPart")
-    if GodModeState then task.wait(0.2) end
+    Character = newCharacter
+    hrp = Character:WaitForChild("HumanoidRootPart")
+
+    if GodModeState then
+        task.wait(0.2)
+    end
 end)
 
+
 pcall(function()
-    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
-        player.PlayerGui.FruitHubUI:Destroy()
-    end
+    if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
+        player.PlayerGui.FruitHubUI:Destroy()
+    end
 end)
 
 local PlayerGui = player:WaitForChild("PlayerGui", 5)
 if not PlayerGui then return end
 
--- ================================================================= --
--- HÀM CORE CHO AUTO HAKI
--- ================================================================= --
-
-local function doKeyTap(keyName)
-    pcall(function()
-        VirtualInputManager:SendKeyEvent(true, keyName, false, game)
-        task.wait(0.01)
-        VirtualInputManager:SendKeyEvent(false, keyName, false, game)
-    end)
-    return true
-end
-
-local function simpleClamp(n, lo, hi)
-    return math.max(lo, math.min(hi, n))
-end
-
-local function simpleInterval(txt)
-    local n = tonumber(txt) or DEFAULT_INTERVAL
-    return simpleClamp(n, MIN_INTERVAL, MAX_INTERVAL)
-end
-
-local function simpleReadGUI(obj)
-    if not obj or not obj:IsA("GuiObject") then return nil end
-    return obj.Size.X.Scale
-end
-
-local function simpleFindGUI()
-    local pg = player and player:FindFirstChild("PlayerGui")
-    if not pg then return nil end
-    
-    for _, obj in ipairs(pg:GetDescendants()) do
-        -- Thử tìm các thanh bar trong game phổ biến
-        if obj:IsA("GuiObject") and (obj.Name:lower():find("bar") or obj.Name:lower():find("cooldown")) and obj.Parent.Name:lower():find("frame") then
-            return obj
-        end
-    end
-    return nil
-end
-
-local function checkCooldown(targetGUI)
-    if not targetGUI or currentMode == "Spam" then return end
-    
-    -- Lấy giá trị thanh bar hiện tại
-    local startVal = simpleReadGUI(targetGUI)
-    if not startVal then return end
-    
-    local startTime = tick()
-    local maxWait = 5
-    
-    -- Chờ cho thanh bar thay đổi (cho thấy Haki đã được kích hoạt)
-    while tick() - startTime < maxWait do
-        local currentVal = simpleReadGUI(targetGUI)
-        if currentVal and math.abs(currentVal - startVal) > 0.1 then
-            -- Đã kích hoạt, bây giờ chờ cooldown kết thúc
-            local cooldownStart = tick()
-            while tick() - cooldownStart < maxWait do
-                local checkVal = simpleReadGUI(targetGUI)
-                -- Cooldown kết thúc khi thanh bar gần đầy hoặc gần hết (tùy game)
-                if checkVal and (checkVal <= 0.05 or checkVal >= 0.95) then
-                    local duration = tick() - CooldownData.lastPressTime
-                    -- Ghi lại mẫu thời gian
-                    if duration > 0.1 and duration < MAX_INTERVAL * 2 then
-                        table.insert(CooldownData.lastSamples, duration)
-                        if #CooldownData.lastSamples > SAMPLE_WINDOW then
-                            table.remove(CooldownData.lastSamples, 1)
-                        end
-                        CooldownData.successCount = CooldownData.successCount + 1
-                    end
-                    return
-                end
-                task.wait(0.05)
-            end
-            break
-        end
-        task.wait(0.05)
-    end
-end
-
-local function getSmartInterval()
-    if #CooldownData.lastSamples == 0 then
-        -- Sử dụng giá trị từ TextBox nếu có, nếu không thì dùng DEFAULT_INTERVAL
-        local intervalText = HakiUIControls.IntervalBox and HakiUIControls.IntervalBox.Text or tostring(DEFAULT_INTERVAL)
-        return simpleInterval(intervalText)
-    end
-    local total = 0
-    for _, sample in ipairs(CooldownData.lastSamples) do
-        total = total + sample
-    end
-    local avg = total / #CooldownData.lastSamples
-    return simpleClamp(avg - 0.05, MIN_INTERVAL, MAX_INTERVAL)
-end
-
-
--- ================================================================= --
--- PHẦN UI CỦA HUB CHÍNH
--- ================================================================= --
+-- ===== PHẦN UI (Kích thước đã thu nhỏ & Độ mờ) =====
 local MAIN_W, MAIN_H = 600, 380
 local Sidebar_W = 130
 local ScreenGui = Instance.new("ScreenGui")
@@ -214,7 +119,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.2.7 - No Loot)" -- CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.4)" -- CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -244,37 +149,37 @@ CloseBtn.BackgroundTransparency = 0.1
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
 CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-    script:Destroy()
+    ScreenGui:Destroy()
+    script:Destroy()
 end)
 
 do
-    local dragging = false
-    local dragStart, startPos
-    TitleBar.InputBegan:Connect(function(input)
-        if input.UserInputType==Enum.UserInputType.MouseButton1 then
-            dragging=true
-            dragStart=input.Position
-            startPos=Main.Position
-            input.Changed:Connect(function()
-                if input.UserInputState==Enum.UserInputState.End then dragging=false end
-            end)
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType==Enum.UserInputType.MouseMovement then
-            local delta=input.Position - dragStart
-            Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
-        end
-    end)
+    local dragging = false
+    local dragStart, startPos
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType==Enum.UserInputType.MouseButton1 then
+            dragging=true
+            dragStart=input.Position
+            startPos=Main.Position
+            input.Changed:Connect(function()
+                if input.UserInputState==Enum.UserInputState.End then dragging=false end
+            end)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType==Enum.UserInputType.MouseMovement then
+            local delta=input.Position - dragStart
+            Main.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+        end
+    end)
 end
 
 -- Xử lý Hotkey (Dùng biến Hotkey đã được khai báo)
 UserInputService.InputBegan:Connect(function(input,gpe)
-    if not gpe and input.KeyCode == Hotkey then
-        HubVisible = not HubVisible
-        ScreenGui.Enabled = HubVisible
-    end
+    if not gpe and input.KeyCode == Hotkey then
+        HubVisible = not HubVisible
+        ScreenGui.Enabled = HubVisible
+    end
 end)
 
 local Sidebar = Instance.new("Frame")
@@ -286,7 +191,8 @@ Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
-local tabs = {"AutoFarm","AutoNPC","AutoHaki","Drop Items","Utility","Settings"} -- ĐỔI TÊN TAB
+-- Danh sách tab đã được cập nhật (Drop -> Fruit Mix)
+local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit Mix","Utility","Settings"}
 local tabButtons, panels = {}, {}
 
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
@@ -301,28 +207,28 @@ local Panel_W = MAIN_W - Sidebar_W - 20
 local Panel_H = MAIN_H - 32 - 20
 
 for i,name in ipairs(tabs) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,-10,0,32)
-    btn.BackgroundColor3 = Color3.fromRGB(44,44,46)
-    btn.BackgroundTransparency = 0.2
-    btn.BorderSizePixel = 0
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 13
-    btn.TextColor3 = Color3.fromRGB(220,220,220)
-    btn.Text = name
-    btn.Parent = Sidebar
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
-    btn.LayoutOrder = i
-    tabButtons[name] = btn
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1,-10,0,32)
+    btn.BackgroundColor3 = Color3.fromRGB(44,44,46)
+    btn.BackgroundTransparency = 0.2
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    btn.TextColor3 = Color3.fromRGB(220,220,220)
+    btn.Text = name
+    btn.Parent = Sidebar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+    btn.LayoutOrder = i
+    tabButtons[name] = btn
 
-    local panel = Instance.new("Frame")
-    panel.Name = name .. "Panel"
-    panel.Size = UDim2.new(0, Panel_W, 0, Panel_H)
-    panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start)
-    panel.BackgroundTransparency = 1
-    panel.Visible = false
-    panel.Parent = Main
-    panels[name] = panel
+    local panel = Instance.new("Frame")
+    panel.Name = name .. "Panel"
+    panel.Size = UDim2.new(0, Panel_W, 0, Panel_H)
+    panel.Position = UDim2.new(0, Panel_X_Start, 0, Panel_Y_Start)
+    panel.BackgroundTransparency = 1
+    panel.Visible = false
+    panel.Parent = Main
+    panels[name] = panel
 end
 
 panels["AutoFarm"].Visible = true
@@ -330,668 +236,626 @@ tabButtons["AutoFarm"].BackgroundColor3 = Color3.fromRGB(60,60,62)
 tabButtons["AutoFarm"].BackgroundTransparency = 0.1
 
 for name, btn in pairs(tabButtons) do
-    btn.MouseButton1Click:Connect(function()
-        for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46); v.BackgroundTransparency = 0.2 end
-        for _,p in pairs(panels) do p.Visible = false end
-        btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-        btn.BackgroundTransparency = 0.1
-        panels[name].Visible = true
-    end)
+    btn.MouseButton1Click:Connect(function()
+        for k,v in pairs(tabButtons) do v.BackgroundColor3 = Color3.fromRGB(44,44,46); v.BackgroundTransparency = 0.2 end
+        for _,p in pairs(panels) do p.Visible = false end
+        btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
+        btn.BackgroundTransparency = 0.1
+        panels[name].Visible = true
+    end)
 end
-
--- ================================================================= --
--- PANEL AUTO FARM (SKILL Z,X,C,V) & NPC
--- ================================================================= --
 
 local AutoFarmPanel = panels["AutoFarm"]
 do
-    local p = AutoFarmPanel
-    local y=6
-    local label=Instance.new("TextLabel",p)
-    label.Size=UDim2.new(1,0,0,24)
-    label.Position=UDim2.new(0,0,0,y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(220,220,220)
-    label.Text="Auto Skills (spam keys)"
-    y=y+30
+    local p = AutoFarmPanel
+    local y=6
+    local label=Instance.new("TextLabel",p)
+    label.Size=UDim2.new(1,0,0,24)
+    label.Position=UDim2.new(0,0,0,y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(220,220,220)
+    label.Text="Auto Skills (spam keys)"
+    y=y+30
 
-    local x_start = 10
-    local spacing = (Panel_W - (100 * 4 + x_start * 2)) / 3
+    local x_start = 10
+    local spacing = (Panel_W - (100 * 4 + x_start * 2)) / 3
 
-    for i,key in ipairs({"Z","X","C","V"}) do
-        local btn=Instance.new("TextButton",p)
-        btn.Size=UDim2.new(0,100,0,32)
-        btn.Position=UDim2.new(0,x_start+(i-1)*(100+spacing),0,y)
-        btn.Text=key.." OFF"
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 14
-        btn.TextColor3 = Color3.fromRGB(230,230,230)
-        btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
-        btn.BackgroundTransparency = 0.15
-        btn.BorderSizePixel = 0
-        Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
-        local state=false
-        btn.MouseButton1Click:Connect(function()
-            state=not state
-            AutoSkillState[key]=state
-            btn.Text=key..(state and " ON" or " OFF")
-            btn.BackgroundColor3=state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
-            btn.BackgroundTransparency=state and 0.1 or 0.15
-        end)
-    end
+    for i,key in ipairs({"Z","X","C","V"}) do
+        local btn=Instance.new("TextButton",p)
+        btn.Size=UDim2.new(0,100,0,32)
+        btn.Position=UDim2.new(0,x_start+(i-1)*(100+spacing),0,y)
+        btn.Text=key.." OFF"
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 14
+        btn.TextColor3 = Color3.fromRGB(230,230,230)
+        btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
+        btn.BackgroundTransparency = 0.15
+        btn.BorderSizePixel = 0
+        Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
+        local state=false
+        btn.MouseButton1Click:Connect(function()
+            state=not state
+            AutoSkillState[key]=state
+            btn.Text=key..(state and " ON" or " OFF")
+            btn.BackgroundColor3=state and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
+            btn.BackgroundTransparency=state and 0.1 or 0.15
+        end)
+    end
 end
 
--- VÒNG LẶP AUTO SKILL
+-- VÒNG LẶP AUTO SKILL (CHẠY ĐỘC LẬP VỚI HAKI)
 task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if not AutoFarmNPC then
-            for key,enabled in pairs(AutoSkillState) do
-                if enabled then
-                    pcall(function()
-                        VirtualInputManager:SendKeyEvent(true,key,false,game)
-                        task.wait(0.04)
-                        VirtualInputManager:SendKeyEvent(false,key,false,game)
-                    end)
-                end
-            end
-        end
-    end
+    while true do
+        task.wait(0.5)
+        
+        -- Chạy Z, X, C, V (Dù Haki có đang bật hay không - độc lập)
+        if not AutoFarmNPC then
+            for key,enabled in pairs(AutoSkillState) do
+                if enabled then
+                    pcall(function()
+                        -- NHẤN VÀ NHẢ PHÍM NGAY LẬP TỨC
+                        VirtualInputManager:SendKeyEvent(true,key,false,game)
+                        task.wait(0.04)
+                        VirtualInputManager:SendKeyEvent(false,key,false,game)
+                    end)
+                end
+            end
+        end
+    end
 end)
 
 local AutoNPCPanel = panels["AutoNPC"]
 do
-    local p = AutoNPCPanel
-    local y = 6
-    local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, y)
-    label.Position = UDim2.new(0, 0, 0, y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(255, 170, 0)
-    label.Text = "AUTO FARM NPC (Tự động đánh quái)"
-    y = y + 30
+    local p = AutoNPCPanel
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, y)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 170, 0)
+    label.Text = "AUTO FARM NPC (Tự động đánh quái)"
+    y = y + 30
 
-    local masterBtn = Instance.new("TextButton", p)
-    masterBtn.Size = UDim2.new(0, 200, 0, 32)
-    masterBtn.Position = UDim2.new(0, 10, 0, y)
-    masterBtn.Text = "Auto Farm NPC: OFF"
-    masterBtn.Font = Enum.Font.GothamBold
-    masterBtn.TextSize = 14
-    masterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    masterBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-    masterBtn.BackgroundTransparency = 0.15
-    masterBtn.BorderSizePixel = 0
-    Instance.new("UICorner", masterBtn).CornerRadius = UDim.new(0, 6)
+    local masterBtn = Instance.new("TextButton", p)
+    masterBtn.Size = UDim2.new(0, 200, 0, 32)
+    masterBtn.Position = UDim2.new(0, 10, 0, y)
+    masterBtn.Text = "Auto Farm NPC: OFF"
+    masterBtn.Font = Enum.Font.GothamBold
+    masterBtn.TextSize = 14
+    masterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    masterBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    masterBtn.BackgroundTransparency = 0.15
+    masterBtn.BorderSizePixel = 0
+    Instance.new("UICorner", masterBtn).CornerRadius = UDim.new(0, 6)
 
-    masterBtn.MouseButton1Click:Connect(function()
-        AutoFarmNPC = not AutoFarmNPC
-        masterBtn.Text = "Auto Farm NPC: " .. (AutoFarmNPC and "ON" or "OFF")
-        masterBtn.BackgroundColor3 = AutoFarmNPC and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(150, 50, 50)
-        masterBtn.BackgroundTransparency = AutoFarmNPC and 0.1 or 0.15
-    end)
-    y = y + 42
+    masterBtn.MouseButton1Click:Connect(function()
+        AutoFarmNPC = not AutoFarmNPC
+        masterBtn.Text = "Auto Farm NPC: " .. (AutoFarmNPC and "ON" or "OFF")
+        masterBtn.BackgroundColor3 = AutoFarmNPC and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(150, 50, 50)
+        masterBtn.BackgroundTransparency = AutoFarmNPC and 0.1 or 0.15
+    end)
+    y = y + 42
 
-    local lblRange = Instance.new("TextLabel", p)
-    lblRange.Size = UDim2.new(0, 250, 0, 18)
-    lblRange.Position = UDim2.new(0, 10, 0, y)
-    lblRange.BackgroundTransparency = 1
-    lblRange.Font = Enum.Font.Gotham
-    lblRange.TextSize = 12
-    lblRange.TextColor3 = Color3.fromRGB(200, 200, 200)
-    lblRange.Text = "Phạm vi tìm kiếm: " .. FarmRadius .. " studs (Mặc định)"
-    lblRange.TextXAlignment = Enum.TextXAlignment.Left
-    y = y + 24
+    local lblRange = Instance.new("TextLabel", p)
+    lblRange.Size = UDim2.new(0, 250, 0, 18)
+    lblRange.Position = UDim2.new(0, 10, 0, y)
+    lblRange.BackgroundTransparency = 1
+    lblRange.Font = Enum.Font.Gotham
+    lblRange.TextSize = 12
+    lblRange.TextColor3 = Color3.fromRGB(200, 200, 200)
+    lblRange.Text = "Phạm vi tìm kiếm: " .. FarmRadius .. " studs (Mặc định)"
+    lblRange.TextXAlignment = Enum.TextXAlignment.Left
+    y = y + 24
 
-    local btnInfo = Instance.new("TextLabel", p)
-    btnInfo.Size = UDim2.new(1, -20, 0, 40)
-    btnInfo.Position = UDim2.new(0, 10, 0, y)
-    btnInfo.BackgroundTransparency = 1
-    btnInfo.Font = Enum.Font.GothamBold
-    btnInfo.TextSize = 12
-    btnInfo.TextColor3 = Color3.fromRGB(255, 170, 170)
-    btnInfo.TextXAlignment = Enum.TextXAlignment.Left
-    btnInfo.Text = "CẦN LÀM: BẬT Auto Skills (Z, X, C, V) trong tab AutoFarm để sử dụng chiêu!"
-    y = y + 50
+    local btnInfo = Instance.new("TextLabel", p)
+    btnInfo.Size = UDim2.new(1, -20, 0, 40)
+    btnInfo.Position = UDim2.new(0, 10, 0, y)
+    btnInfo.BackgroundTransparency = 1
+    btnInfo.Font = Enum.Font.GothamBold
+    btnInfo.TextSize = 12
+    btnInfo.TextColor3 = Color3.fromRGB(255, 170, 170)
+    btnInfo.TextXAlignment = Enum.TextXAlignment.Left
+    btnInfo.Text = "CẦN LÀM: BẬT Auto Skills (Z, X, C, V) trong tab AutoFarm để sử dụng chiêu!"
+    y = y + 50
 end
 
 local function findAndFarmNPC()
-    local targetNPC = nil
-    local shortestDistance = FarmRadius + 1
+    local targetNPC = nil
+    local shortestDistance = FarmRadius + 1
 
-    for _, v in ipairs(workspace:GetChildren()) do
-        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-            if v.Name ~= player.Name then
-                local npcHR = v:FindFirstChild("HumanoidRootPart")
-                if npcHR and hrp then
-                    local distance = (hrp.Position - npcHR.Position).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        targetNPC = npcHR
-                    end
-                end
-            end
-        end
-    end
+    for _, v in ipairs(workspace:GetChildren()) do
+        if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+            if v.Name ~= player.Name then
+                local npcHR = v:FindFirstChild("HumanoidRootPart")
+                if npcHR and hrp then
+                    local distance = (hrp.Position - npcHR.Position).Magnitude
+                    if distance < shortestDistance then
+                        shortestDistance = distance
+                        targetNPC = npcHR
+                    end
+                end
+            end
+        end
+    end
 
-    if targetNPC then
-        pcall(function()
-            local direction = (hrp.Position - targetNPC.Position).Unit
-            hrp.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -10)
-        end)
+    if targetNPC then
+        pcall(function()
+            local direction = (hrp.Position - targetNPC.Position).Unit
+            hrp.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -10)
+        end)
 
-        for i = 1, 3 do
-            for key, enabled in pairs(AutoSkillState) do
-                if enabled then
-                    pcall(function()
-                        VirtualInputManager:SendKeyEvent(true, key, false, game)
-                        task.wait(0.04)
-                        VirtualInputManager:SendKeyEvent(false, key, false, game)
-                    end)
-                end
-            end
-            task.wait(0.3)
-        end
-        return true
-    end
-    return false
+        for i = 1, 3 do
+            for key, enabled in pairs(AutoSkillState) do
+                if enabled then
+                    pcall(function()
+                        VirtualInputManager:SendKeyEvent(true, key, false, game)
+                        task.wait(0.04)
+                        VirtualInputManager:SendKeyEvent(false, key, false, game)
+                    end)
+                end
+            end
+            task.wait(0.3)
+        end
+        return true
+    end
+    return false
 end
 
 task.spawn(function()
-    while true do
-        if AutoFarmNPC and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
-            findAndFarmNPC()
-        end
-        task.wait(0.5)
-    end
+    while true do
+        if AutoFarmNPC and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
+            findAndFarmNPC()
+        end
+        task.wait(0.5)
+    end
 end)
 
--- VÒNG LẶP GOD MODE
+-- VÒNG LẶP GOD MODE (Dùng Heartbeat)
 RunService.Heartbeat:Connect(function(step)
-    if GodModeState and player.Character then
-        local human = player.Character:FindFirstChildOfClass("Humanoid")
-        if human and human.Health > 0 and human.MaxHealth > 0 then
-            human.Health = human.MaxHealth
-        end
-    end
+    if GodModeState and player.Character then
+        local human = player.Character:FindFirstChildOfClass("Humanoid")
+        if human and human.Health > 0 and human.MaxHealth > 0 then
+            human.Health = human.MaxHealth
+        end
+    end
 end)
 
 
--- ================================================================= --
--- PANEL AUTO HAKI (ADAPTIVE/SPAM)
--- ================================================================= --
 local AutoHakiPanel = panels["AutoHaki"]
-local targetGUI = nil
-
 do
-    local p = AutoHakiPanel
-    p.BackgroundTransparency = 0.95
-    local y = 6
+    local p = AutoHakiPanel
+    local lbl=Instance.new("TextLabel",p)
+    lbl.Size=UDim2.new(1,0,0,24)
+    lbl.Position=UDim2.new(0,0,0,6)
+    lbl.BackgroundTransparency=1
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 14
+    lbl.TextColor3 = Color3.fromRGB(220,220,220)
+    lbl.Text="Auto Haki (Giữ R trong 7s, nghỉ 1s) - Cực Ổn Định" 
 
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 25)
-    title.Position = UDim2.new(0, 0, 0, y)
-    title.BackgroundTransparency = 1
-    title.Text = "AutoHaki ADAPTIVE/SPAM (R & Q)"
-    title.TextColor3 = Color3.fromRGB(0, 255, 0)
-    title.Font = Enum.Font.SourceSansBold
-    title.TextSize = 16
-    title.Parent = p
-    y = y + 25
-
-    local status = Instance.new("TextLabel")
-    status.Name = "StatusLabel"
-    status.Size = UDim2.new(1, -10, 0, 20)
-    status.Position = UDim2.new(0, 5, 0, y)
-    status.BackgroundTransparency = 1
-    status.Text = "🔴 R OFF | 🔴 Q OFF | Mode: Adaptive | Success: 0%"
-    status.TextColor3 = Color3.fromRGB(200, 200, 200)
-    status.TextXAlignment = Enum.TextXAlignment.Left
-    status.Font = Enum.Font.SourceSans
-    status.TextSize = 14
-    status.Parent = p
-    HakiUIControls.StatusLabel = status
-    y = y + 25
-
-    -- HÀM CẬP NHẬT UI
-    local function updateUI()
-        local successRate = CooldownData.pressCount > 0 and
-            math.floor((CooldownData.successCount / CooldownData.pressCount) * 100) or 0
-        
-        status.Text = string.format("%s R | %s Q | Mode: %s | Success: %d%%",
-            isRunningR and "🟢" or "🔴",
-            isRunningQ and "🟢" or "🔴",
-            currentMode,
-            successRate
-        )
-    end
-    HakiUIControls.UpdateFunction = updateUI
-
-    local modeBtn = Instance.new("TextButton")
-    modeBtn.Size = UDim2.new(0, 80, 0, 25)
-    modeBtn.Position = UDim2.new(0, 5, 0, y)
-    modeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    modeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    modeBtn.Text = "Adaptive"
-    modeBtn.Font = Enum.Font.SourceSans
-    modeBtn.TextSize = 14
-    modeBtn.Parent = p
-    HakiUIControls.ModeButton = modeBtn
-
-    local intBox = Instance.new("TextBox")
-    intBox.Name = "IntervalBox"
-    intBox.Size = UDim2.new(0, 60, 0, 25)
-    intBox.Position = UDim2.new(0, 90, 0, y)
-    intBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    intBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    intBox.Text = string.format("%.2f", DEFAULT_INTERVAL)
-    intBox.ClearTextOnFocus = false
-    intBox.Font = Enum.Font.SourceSans
-    intBox.TextSize = 14
-    intBox.Parent = p
-    HakiUIControls.IntervalBox = intBox
-
-    local rToggleBtn = Instance.new("TextButton")
-    rToggleBtn.Size = UDim2.new(0, 100, 0, 25)
-    rToggleBtn.Position = UDim2.new(1, -105, 0, y)
-    rToggleBtn.AnchorPoint = Vector2.new(1, 0)
-    rToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-    rToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    rToggleBtn.Text = "R START (F6)"
-    rToggleBtn.Font = Enum.Font.SourceSansBold
-    rToggleBtn.TextSize = 14
-    rToggleBtn.Parent = p
-    HakiUIControls.RToggleButton = rToggleBtn
-    y = y + 30
-
-    local pathBox = Instance.new("TextBox")
-    pathBox.Name = "PathBox"
-    pathBox.Size = UDim2.new(1, -10, 0, 20)
-    pathBox.Position = UDim2.new(0, 5, 0, y)
-    pathBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    pathBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    pathBox.PlaceholderText = "Auto-detecting GUI..."
-    pathBox.ClearTextOnFocus = false
-    pathBox.Font = Enum.Font.SourceSans
-    pathBox.TextSize = 12
-    pathBox.Parent = p
-    HakiUIControls.PathBox = pathBox
-    y = y + 25
-
-    local qToggleBtn = Instance.new("TextButton")
-    qToggleBtn.Name = "QToggleBtn"
-    qToggleBtn.Size = UDim2.new(0, 120, 0, 25)
-    qToggleBtn.Position = UDim2.new(0, 5, 0, y)
-    qToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    qToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    qToggleBtn.Text = "🔴 Auto Q: OFF"
-    qToggleBtn.Font = Enum.Font.SourceSansBold
-    qToggleBtn.TextSize = 14
-    qToggleBtn.Parent = p
-    HakiUIControls.QToggleButton = qToggleBtn
-    y = y + 30
-
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Name = "InfoLabel"
-    infoLabel.Size = UDim2.new(1, -10, 0, 40)
-    infoLabel.Position = UDim2.new(0, 5, 0, y)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "Ready... Press R START. Mode: Adaptive"
-    infoLabel.TextColor3 = Color3.fromRGB(150, 150, 255)
-    infoLabel.TextSize = 12
-    infoLabel.TextXAlignment = Enum.TextXAlignment.Left
-    infoLabel.TextYAlignment = Enum.TextYAlignment.Top
-    infoLabel.TextWrap = true
-    infoLabel.Parent = p
-    HakiUIControls.InfoLabel = infoLabel
-    
-    -- CONNECT ACTIONS
-    
-    -- Toggle R
-    rToggleBtn.MouseButton1Click:Connect(function()
-        isRunningR = not isRunningR
-        rToggleBtn.Text = isRunningR and "R STOP (F6)" or "R START (F6)"
-        rToggleBtn.BackgroundColor3 = isRunningR and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(200, 0, 0)
-        infoLabel.Text = isRunningR and "R Running. Monitoring cooldown patterns" or "R Stopped. Ready to continue."
-        updateUI()
-    end)
-
-    -- Hotkey F6
-    UserInputService.InputBegan:Connect(function(input, gpe)
-        if not gpe and input.KeyCode == Enum.KeyCode.F6 and panels["AutoHaki"].Visible then
-            rToggleBtn.MouseButton1Click:Fire()
-        end
-    end)
-
-    -- Toggle Q
-    qToggleBtn.MouseButton1Click:Connect(function()
-        isRunningQ = not isRunningQ
-        qToggleBtn.Text = isRunningQ and "🟢 Auto Q: ON" or "🔴 Auto Q: OFF"
-        qToggleBtn.BackgroundColor3 = isRunningQ and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(80, 80, 80)
-        infoLabel.Text = isRunningQ and "Auto Q: ON. Bấm R và Q cùng nhau (Tốt cho các game có 2 Haki)." or "Auto Q: OFF. Chỉ bấm R."
-        updateUI()
-    end)
-
-    -- Toggle Mode
-    modeBtn.MouseButton1Click:Connect(function()
-        currentMode = (currentMode == "Adaptive") and "Spam" or "Adaptive"
-        modeBtn.Text = currentMode
-        modeBtn.BackgroundColor3 = currentMode == "Adaptive" and Color3.fromRGB(60, 60, 120) or Color3.fromRGB(120, 60, 60)
-        infoLabel.Text = currentMode == "Adaptive" and "Mode: Adaptive (Tự động canh cooldown)." or "Mode: Spam (Bấm liên tục theo Interval)."
-        updateUI()
-    end)
-
-    -- Auto-detect GUI khi panel hiện
-    task.spawn(function()
-        task.wait(3)
-        local gui = simpleFindGUI()
-        if gui then
-            targetGUI = gui
-            pathBox.Text = gui:GetFullName()
-            infoLabel.Text = "Auto-detected: " .. gui.Name
-        end
-    end)
+    local btn=Instance.new("TextButton",p)
+    btn.Size=UDim2.new(0,140,0,32)
+    btn.Position=UDim2.new(0,10,0,40)
+    btn.Text="R OFF"
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.TextColor3 = Color3.fromRGB(230,230,230)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,62)
+    btn.BackgroundTransparency = 0.15
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
+    btn.MouseButton1Click:Connect(function()
+        AutoHakiState=not AutoHakiState
+        btn.Text="R "..(AutoHakiState and "ON" or "OFF")
+        btn.BackgroundColor3=AutoHakiState and Color3.fromRGB(0,170,255) or Color3.fromRGB(60,60,62)
+        btn.BackgroundTransparency=AutoHakiState and 0.1 or 0.15
+    end)
 end
 
--- ================================================================= --
--- VÒNG LẶP CHÍNH AUTO HAKI (ADAPTIVE/SPAM)
--- ================================================================= --
-
-local mainLoopActive = true
-local loopCount = 0
-
+-- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.2.4 FIX - Ép buộc vòng lặp)
 task.spawn(function()
-    while mainLoopActive do
-        if isRunningR then
-            loopCount = loopCount + 1
-            
-            CooldownData.pressCount = CooldownData.pressCount + 1
-            CooldownData.lastPressTime = tick()
-            
-            -- Nhấn phím R
-            pcall(doKeyTap, DEFAULT_KEY)
-            
-            -- Nhấn phím Q nếu được bật riêng biệt
-            if isRunningQ then
-                pcall(doKeyTap, SECONDARY_KEY)
-            end
-            
-            -- Tìm/Kiểm tra GUI
-            if not targetGUI then
-                targetGUI = simpleFindGUI()
-                if targetGUI and HakiUIControls.PathBox then
-                    HakiUIControls.PathBox.Text = targetGUI:GetFullName()
-                    HakiUIControls.InfoLabel.Text = "Auto-detected: " .. targetGUI.Name
-                end
-            end
+    while true do
+        if AutoHakiState and player.Character then
 
-            if targetGUI then
-                checkCooldown(targetGUI)
-            end
-            
-            -- Cập nhật interval và UI
-            local waitTime = 0.5 -- Default khi ko có TextBox
-            if HakiUIControls.IntervalBox then
-                waitTime = simpleInterval(HakiUIControls.IntervalBox.Text)
-            end
-            
-            if currentMode == "Adaptive" then
-                waitTime = getSmartInterval()
-            end
+            -- 1. Bấm và GIỮ R (7 giây)
+            pcall(function()
+                VirtualInputManager:SendKeyEvent(true,"R",false,game)
+            end)
 
-            if loopCount % 5 == 0 and HakiUIControls.UpdateFunction then
-                HakiUIControls.UpdateFunction()
-            end
-            
-            task.wait(waitTime)
-            
-        else
-            task.wait(0.5)
-        end
-    end
+            task.wait(7.0) -- Giữ phím R trong 7 giây
+
+            -- 2. NHẢ R
+            pcall(function()
+                VirtualInputManager:SendKeyEvent(false,"R",false,game)
+            end)
+
+            -- FIX CỐT LÕI: Đợi 10ms và nhường luồng (yield) để đảm bảo phím R được nhả
+            task.wait(0.01)
+            task.yield() 
+
+            -- 3. NGHỈ
+            task.wait(1.0) -- Đợi 1 giây trước khi lặp lại chu kỳ
+
+        else
+            -- Nếu tắt, đợi ngắn hơn và kiểm tra lại trạng thái
+            task.wait(0.5)
+        end
+    end
 end)
 
--- ================================================================= --
--- PANEL AUTO DROP ITEMS (FRUIT MIX)
--- ================================================================= --
 
-local FruitMixPanel = panels["Drop Items"] -- ĐỔI TÊN PANEL TƯƠNG ỨNG
+local FruitMixPanel = panels["Fruit Mix"]
 do
-    local p = FruitMixPanel
-    local y = 6
-    local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, y)
-    label.Position = UDim2.new(0, 0, 0, y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(0, 255, 170)
-    label.Text = "AUTO DROP ITEMS (FRUIT MIX)"
-    y = y + 30
+    local p = FruitMixPanel
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, y)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(0, 255, 170)
+    label.Text = "AUTO DROP ITEMS (FRUIT MIX)"
+    y = y + 30
 
-    -- NÚT AUTO DROP ITEM THƯỜNG
-    local dropBtn = Instance.new("TextButton", p)
-    dropBtn.Size = UDim2.new(0, 280, 0, 32)
-    dropBtn.Position = UDim2.new(0, 10, 0, y)
-    dropBtn.Text = "Auto Drop Item (Thường): OFF"
-    dropBtn.Font = Enum.Font.GothamBold
-    dropBtn.TextSize = 14
-    dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dropBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 150)
-    dropBtn.BackgroundTransparency = 0.15
-    dropBtn.BorderSizePixel = 0
-    Instance.new("UICorner", dropBtn).CornerRadius = UDim.new(0, 6)
+    -- NÚT AUTO DROP ITEM THƯỜNG
+    local dropBtn = Instance.new("TextButton", p)
+    dropBtn.Size = UDim2.new(0, 280, 0, 32)
+    dropBtn.Position = UDim2.new(0, 10, 0, y)
+    dropBtn.Text = "Auto Drop Item (Thường): OFF"
+    dropBtn.Font = Enum.Font.GothamBold
+    dropBtn.TextSize = 14
+    dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dropBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 150)
+    dropBtn.BackgroundTransparency = 0.15
+    dropBtn.BorderSizePixel = 0
+    Instance.new("UICorner", dropBtn).CornerRadius = UDim.new(0, 6)
 
-    dropBtn.MouseButton1Click:Connect(function()
-        AutoDropItem = not AutoDropItem
-        dropBtn.Text = "Auto Drop Item (Thường): " .. (AutoDropItem and "ON" or "OFF")
-        dropBtn.BackgroundColor3 = AutoDropItem and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 150)
-        dropBtn.BackgroundTransparency = AutoDropItem and 0.1 or 0.15
-    end)
-    y = y + 40
+    dropBtn.MouseButton1Click:Connect(function()
+        AutoDropItem = not AutoDropItem
+        dropBtn.Text = "Auto Drop Item (Thường): " .. (AutoDropItem and "ON" or "OFF")
+        dropBtn.BackgroundColor3 = AutoDropItem and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(50, 50, 150)
+        dropBtn.BackgroundTransparency = AutoDropItem and 0.1 or 0.15
+    end)
+    y = y + 40
 
-    -- NÚT AUTO DROP ITEM PLUS (+)
-    local dropPlusBtn = Instance.new("TextButton", p)
-    dropPlusBtn.Size = UDim2.new(0, 280, 0, 32)
-    dropPlusBtn.Position = UDim2.new(0, 10, 0, y)
-    dropPlusBtn.Text = "Auto Drop Item (+): OFF"
-    dropPlusBtn.Font = Enum.Font.GothamBold
-    dropPlusBtn.TextSize = 14
-    dropPlusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    dropPlusBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 150)
-    dropPlusBtn.BackgroundTransparency = 0.15
-    dropPlusBtn.BorderSizePixel = 0
-    Instance.new("UICorner", dropPlusBtn).CornerRadius = UDim.new(0, 6)
+    -- NÚT AUTO DROP ITEM PLUS (+)
+    local dropPlusBtn = Instance.new("TextButton", p)
+    dropPlusBtn.Size = UDim2.new(0, 280, 0, 32)
+    dropPlusBtn.Position = UDim2.new(0, 10, 0, y)
+    dropPlusBtn.Text = "Auto Drop Item (+): OFF"
+    dropPlusBtn.Font = Enum.Font.GothamBold
+    dropPlusBtn.TextSize = 14
+    dropPlusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dropPlusBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 150)
+    dropPlusBtn.BackgroundTransparency = 0.15
+    dropPlusBtn.BorderSizePixel = 0
+    Instance.new("UICorner", dropPlusBtn).CornerRadius = UDim.new(0, 6)
 
-    dropPlusBtn.MouseButton1Click:Connect(function()
-        AutoDropItemPlus = not AutoDropItemPlus
-        dropPlusBtn.Text = "Auto Drop Item (+): " .. (AutoDropItemPlus and "ON" or "OFF")
-        dropPlusBtn.BackgroundColor3 = AutoDropItemPlus and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(50, 150, 150)
-        dropPlusBtn.BackgroundTransparency = AutoDropItemPlus and 0.1 or 0.15
-    end)
-    y = y + 42
+    dropPlusBtn.MouseButton1Click:Connect(function()
+        AutoDropItemPlus = not AutoDropItemPlus
+        dropPlusBtn.Text = "Auto Drop Item (+): " .. (AutoDropItemPlus and "ON" or "OFF")
+        dropPlusBtn.BackgroundColor3 = AutoDropItemPlus and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(50, 150, 150)
+        dropPlusBtn.BackgroundTransparency = AutoDropItemPlus and 0.1 or 0.15
+    end)
+    y = y + 42
 
-    local note = Instance.new("TextLabel", p)
-    note.Size = UDim2.new(1, -20, 0, 40)
-    note.Position = UDim2.new(0, 10, 0, y)
-    note.BackgroundTransparency = 1
-    note.Font = Enum.Font.Gotham
-    note.TextSize = 12
-    note.TextColor3 = Color3.fromRGB(255, 170, 170)
-    note.TextXAlignment = Enum.TextXAlignment.Left
-    note.TextWrap = true
-    note.Text = "Chức năng này dùng cho các game có tính năng Fruit Mix hoặc cần drop item thừa. Phím Drop: Backspace."
+    -- NÚT AUTO FRUIT MIX (COLLECT CHEST)
+    local collectBtn = Instance.new("TextButton", p)
+    collectBtn.Size = UDim2.new(0, 280, 0, 32)
+    collectBtn.Position = UDim2.new(0, 10, 0, y)
+    collectBtn.Text = "Auto Fruit Mix (Loot Chests): OFF"
+    collectBtn.Font = Enum.Font.GothamBold
+    collectBtn.TextSize = 13
+    collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    collectBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 50)
+    collectBtn.BackgroundTransparency = 0.15
+    collectBtn.BorderSizePixel = 0
+    Instance.new("UICorner", collectBtn).CornerRadius = UDim.new(0, 6)
+
+    collectBtn.MouseButton1Click:Connect(function()
+        AutoCollectChestState = not AutoCollectChestState
+        collectBtn.Text = "Auto Fruit Mix (Loot Chests): " .. (AutoCollectChestState and "ON" or "OFF")
+        collectBtn.BackgroundColor3 = AutoCollectChestState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(150, 150, 50)
+        collectBtn.BackgroundTransparency = AutoCollectChestState and 0.1 or 0.15
+    end)
+    y = y + 42
+
+    -- PHẠM VI TÙY CHỈNH
+    local radiusLabel = Instance.new("TextLabel", p)
+    radiusLabel.Size = UDim2.new(0, 180, 0, 24)
+    radiusLabel.Position = UDim2.new(0, 10, 0, y)
+    radiusLabel.BackgroundTransparency = 1
+    radiusLabel.Font = Enum.Font.Gotham
+    radiusLabel.TextSize = 12
+    radiusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    radiusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    local function updateRadiusLabel()
+        radiusLabel.Text = "Phạm vi Loot Rada (100-350): " .. CollectChestRadius
+    end
+    updateRadiusLabel()
+    y = y + 28
+
+    local radiusInput = Instance.new("TextBox", p)
+    radiusInput.Size = UDim2.new(0, 80, 0, 32)
+    radiusInput.Position = UDim2.new(0, 10, 0, y)
+    radiusInput.PlaceholderText = "100-350"
+    radiusInput.Text = tostring(CollectChestRadius)
+    radiusInput.Font = Enum.Font.Gotham
+    radiusInput.TextSize = 14
+    radiusInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    radiusInput.BackgroundColor3 = Color3.fromRGB(40, 40, 44)
+    radiusInput.BackgroundTransparency = 0.15
+    radiusInput.TextXAlignment = Enum.TextXAlignment.Center
+    Instance.new("UICorner", radiusInput).CornerRadius = UDim.new(0, 6)
+
+    local setRadiusBtn = Instance.new("TextButton", p)
+    setRadiusBtn.Size = UDim2.new(0, 100, 0, 32)
+    setRadiusBtn.Position = UDim2.new(0, 100, 0, y)
+    setRadiusBtn.Text = "SET"
+    setRadiusBtn.Font = Enum.Font.GothamBold
+    setRadiusBtn.TextSize = 14
+    setRadiusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    setRadiusBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 80)
+    setRadiusBtn.BackgroundTransparency = 0.15
+    Instance.new("UICorner", setRadiusBtn).CornerRadius = UDim.new(0, 6)
+
+    setRadiusBtn.MouseButton1Click:Connect(function()
+        local newRadius = tonumber(radiusInput.Text)
+        if newRadius and newRadius >= 100 and newRadius <= 350 then
+            CollectChestRadius = newRadius
+            updateRadiusLabel()
+            radiusInput.Text = tostring(CollectChestRadius)
+        else
+            radiusInput.Text = "LỖI! 100-350"
+            task.wait(1)
+            radiusInput.Text = tostring(CollectChestRadius)
+        end
+    end)
+    y = y + 42
+
+    local note = Instance.new("TextLabel", p)
+    note.Size = UDim2.new(1, -20, 0, 40)
+    note.Position = UDim2.new(0, 10, 0, y)
+    note.BackgroundTransparency = 1
+    note.Font = Enum.Font.Gotham
+    note.TextSize = 12
+    note.TextColor3 = Color3.fromRGB(255, 170, 170)
+    note.TextXAlignment = Enum.TextXAlignment.Left
+    note.TextWrap = true
+    note.Text = string.format("Auto Fruit Mix: Tìm Model '%s', Teleport & click Part '%s'. Phạm vi Rada đi theo nhân vật.", CHEST_MODEL_NAME, CLICKABLE_PART_NAME)
 end
 
 
 local UtilityPanel = panels["Utility"]
 do
-    local p = UtilityPanel
-    local y = 6
-    local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, y)
-    label.Position = UDim2.new(0, 0, 0, y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(85, 170, 255)
-    label.Text = "CHỨC NĂNG TIỆN ÍCH KHÁC"
-    y = y + 30
+    local p = UtilityPanel
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, y)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(85, 170, 255)
+    label.Text = "CHỨC NĂNG TIỆN ÍCH KHÁC"
+    y = y + 30
 
-    -- NÚT GOD MODE
-    local godModeBtn = Instance.new("TextButton", p)
-    godModeBtn.Size = UDim2.new(0, 240, 0, 32)
-    godModeBtn.Position = UDim2.new(0, 10, 0, y)
-    godModeBtn.Text = "God Mode (Bất Tử): OFF"
-    godModeBtn.Font = Enum.Font.GothamBold
-    godModeBtn.TextSize = 13
-    godModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    godModeBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 50)
-    godModeBtn.BackgroundTransparency = 0.15
-    godModeBtn.BorderSizePixel = 0
-    Instance.new("UICorner", godModeBtn).CornerRadius = UDim.new(0, 6)
+    -- NÚT GOD MODE
+    local godModeBtn = Instance.new("TextButton", p)
+    godModeBtn.Size = UDim2.new(0, 240, 0, 32)
+    godModeBtn.Position = UDim2.new(0, 10, 0, y)
+    godModeBtn.Text = "God Mode (Bất Tử): OFF"
+    godModeBtn.Font = Enum.Font.GothamBold
+    godModeBtn.TextSize = 13
+    godModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    godModeBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 50)
+    godModeBtn.BackgroundTransparency = 0.15
+    godModeBtn.BorderSizePixel = 0
+    Instance.new("UICorner", godModeBtn).CornerRadius = UDim.new(0, 6)
 
-    godModeBtn.MouseButton1Click:Connect(function()
-        GodModeState = not GodModeState
-        godModeBtn.Text = "God Mode (Bất Tử): " .. (GodModeState and "ON" or "OFF")
-        godModeBtn.BackgroundColor3 = GodModeState and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(0, 150, 50)
-        godModeBtn.BackgroundTransparency = GodModeState and 0.1 or 0.15
-    end)
-    y = y + 42
+    godModeBtn.MouseButton1Click:Connect(function()
+        GodModeState = not GodModeState
+        godModeBtn.Text = "God Mode (Bất Tử): " .. (GodModeState and "ON" or "OFF")
+        godModeBtn.BackgroundColor3 = GodModeState and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(0, 150, 50)
+        godModeBtn.BackgroundTransparency = GodModeState and 0.1 or 0.15
+    end)
+    y = y + 42
 end
 
 
 local SettingsPanel = panels["Settings"]
 do
-    local p = SettingsPanel
-    local y = 6
-    local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 24)
-    label.Position = UDim2.new(0, 0, 0, y)
-    label.BackgroundTransparency = 1
-    label.Font = Enum.Font.GothamBold
-    label.TextSize = 14
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-    label.Text = "TÙY CHỈNH NÚT ẨN/HIỆN HUB"
-    y = y + 30
+    local p = SettingsPanel
+    local y = 6
+    local label = Instance.new("TextLabel", p)
+    label.Size = UDim2.new(1, 0, 0, 24)
+    label.Position = UDim2.new(0, 0, 0, y)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Text = "TÙY CHỈNH NÚT ẨN/HIỆN HUB"
+    y = y + 30
 
-    -- Label hiển thị nút hiện tại
-    local keyLabel = Instance.new("TextLabel", p)
-    keyLabel.Name = "KeyLabel"
-    keyLabel.Size = UDim2.new(0, 180, 0, 24)
-    keyLabel.Position = UDim2.new(0, 10, 0, y)
-    keyLabel.BackgroundTransparency = 1
-    local function updateKeyLabel()
-        keyLabel.Text = "Nút hiện tại: " .. tostring(Hotkey.Name)
-    end
-    updateKeyLabel()
-    y = y + 28
+    -- Label hiển thị nút hiện tại
+    local keyLabel = Instance.new("TextLabel", p)
+    keyLabel.Name = "KeyLabel"
+    keyLabel.Size = UDim2.new(0, 180, 0, 24)
+    keyLabel.Position = UDim2.new(0, 10, 0, y)
+    keyLabel.BackgroundTransparency = 1
+    local function updateKeyLabel()
+        keyLabel.Text = "Nút hiện tại: " .. tostring(Hotkey.Name)
+    end
+    updateKeyLabel()
+    y = y + 28
 
-    -- Textbox để nhập phím mới
-    local keyInput = Instance.new("TextBox", p)
-    keyInput.Size = UDim2.new(0, 180, 0, 32)
-    keyInput.Position = UDim2.new(0, 10, 0, y)
-    keyInput.PlaceholderText = "Nhập phím mới (Ví dụ: F2)"
-    keyInput.Text = ""
-    keyInput.Font = Enum.Font.Gotham
-    keyInput.TextSize = 14
-    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyInput.BackgroundColor3 = Color3.fromRGB(40, 40, 44)
-    keyInput.BackgroundTransparency = 0.15
-    keyInput.TextXAlignment = Enum.TextXAlignment.Center
-    Instance.new("UICorner", keyInput).CornerRadius = UDim.new(0, 6)
-    y = y + 42
+    -- Textbox để nhập phím mới
+    local keyInput = Instance.new("TextBox", p)
+    keyInput.Size = UDim2.new(0, 180, 0, 32)
+    keyInput.Position = UDim2.new(0, 10, 0, y)
+    keyInput.PlaceholderText = "Nhập phím mới (Ví dụ: F2)"
+    keyInput.Text = ""
+    keyInput.Font = Enum.Font.Gotham
+    keyInput.TextSize = 14
+    keyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyInput.BackgroundColor3 = Color3.fromRGB(40, 40, 44)
+    keyInput.BackgroundTransparency = 0.15
+    keyInput.TextXAlignment = Enum.TextXAlignment.Center
+    Instance.new("UICorner", keyInput).CornerRadius = UDim.new(0, 6)
+    y = y + 42
 
-    -- Nút lưu
-    local saveBtn = Instance.new("TextButton", p)
-    saveBtn.Size = UDim2.new(0, 100, 0, 32)
-    saveBtn.Position = UDim2.new(0, 200, 0, y - 32)
-    saveBtn.Text = "LƯU PHÍM"
-    saveBtn.Font = Enum.Font.GothamBold
-    saveBtn.TextSize = 14
-    saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    saveBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 80)
-    saveBtn.BackgroundTransparency = 0.15
-    Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
+    -- Nút lưu
+    local saveBtn = Instance.new("TextButton", p)
+    saveBtn.Size = UDim2.new(0, 100, 0, 32)
+    saveBtn.Position = UDim2.new(0, 200, 0, y - 32)
+    saveBtn.Text = "LƯU PHÍM"
+    saveBtn.Font = Enum.Font.GothamBold
+    saveBtn.TextSize = 14
+    saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    saveBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 80)
+    saveBtn.BackgroundTransparency = 0.15
+    Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
 
-    saveBtn.MouseButton1Click:Connect(function()
-        local newKeyName = keyInput.Text:upper()
-        local success, newKey = pcall(function() return Enum.KeyCode[newKeyName] end)
+    saveBtn.MouseButton1Click:Connect(function()
+        local newKeyName = keyInput.Text:upper()
+        local success, newKey = pcall(function() return Enum.KeyCode[newKeyName] end)
 
-        if success and newKey then
-            Hotkey = newKey
-            updateKeyLabel()
-            keyInput.Text = ""
-            print("Hotkey đã được thay đổi thành: " .. tostring(Hotkey.Name))
-        else
-            keyInput.Text = "Phím không hợp lệ!"
-            warn("Không thể thay đổi Hotkey: Phím không hợp lệ.")
-            task.wait(1)
-            keyInput.Text = ""
-        end
-    end)
-    y = y + 50
+        if success and newKey then
+            Hotkey = newKey
+            updateKeyLabel()
+            keyInput.Text = ""
+            print("Hotkey đã được thay đổi thành: " .. tostring(Hotkey.Name))
+        else
+            keyInput.Text = "Phím không hợp lệ!"
+            warn("Không thể thay đổi Hotkey: Phím không hợp lệ.")
+            task.wait(1)
+            keyInput.Text = ""
+        end
+    end)
+    y = y + 50
 
-    local note = Instance.new("TextLabel", p)
-    note.Size = UDim2.new(1, -20, 0, 40)
-    note.Position = UDim2.new(0, 10, 0, y)
-    note.BackgroundTransparency = 1
-    note.Font = Enum.Font.Gotham
-    note.TextSize = 12
-    note.TextColor3 = Color3.fromRGB(255, 170, 170)
-    note.TextXAlignment = Enum.TextXAlignment.Left
-    note.TextWrap = true
-    note.Text = "Chỉ dùng phím đơn (ví dụ: F2, R, P, LeftControl, RightControl, E...)."
-    y = y + 50
+    local note = Instance.new("TextLabel", p)
+    note.Size = UDim2.new(1, -20, 0, 40)
+    note.Position = UDim2.new(0, 10, 0, y)
+    note.BackgroundTransparency = 1
+    note.Font = Enum.Font.Gotham
+    note.TextSize = 12
+    note.TextColor3 = Color3.fromRGB(255, 170, 170)
+    note.TextXAlignment = Enum.TextXAlignment.Left
+    note.TextWrap = true
+    note.Text = "Chỉ dùng phím đơn (ví dụ: F2, R, P, LeftControl, RightControl, E...)."
+    y = y + 50
 end
 
 -- VÒNG LẶP AUTO DROP ITEM THƯỜNG
 task.spawn(function()
-    while true do
-        if AutoDropItem then
-            local itemToDrop = findDroppableItemInList(ITEM_DROP_LIST)
+    while true do
+        if AutoDropItem then
+            local itemToDrop = findDroppableItemInList(ITEM_DROP_LIST)
 
-            if itemToDrop then
-                pcall(function()
-                    itemToDrop.Parent = Character
-                    task.wait(0.01)
+            if itemToDrop then
+                pcall(function()
+                    itemToDrop.Parent = Character
+                    task.wait(0.01)
 
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
-                    task.wait(0.01)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+                    task.wait(0.01)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
 
-                    task.wait(0.1)
-                end)
-            end
-        end
-        task.wait(0.1)
-    end
+                    task.wait(0.1)
+                end)
+            end
+        end
+        task.wait(0.1)
+    end
 end)
 
 -- VÒNG LẶP AUTO DROP ITEM PLUS (+)
 task.spawn(function()
-    while true do
-        if AutoDropItemPlus then
-            local itemToDrop = findDroppableItemInList(ITEM_DROP_PLUS_LIST)
+    while true do
+        if AutoDropItemPlus then
+            local itemToDrop = findDroppableItemInList(ITEM_DROP_PLUS_LIST)
 
-            if itemToDrop then
-                pcall(function()
-                    itemToDrop.Parent = Character
-                    task.wait(0.01)
+            if itemToDrop then
+                pcall(function()
+                    itemToDrop.Parent = Character
+                    task.wait(0.01)
 
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
-                    task.wait(0.01)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Backspace, false, game)
+                    task.wait(0.01)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Backspace, false, game)
 
-                    task.wait(0.1)
-                end)
-            end
-        end
-        task.wait(0.1)
-    end
+                    task.wait(0.1)
+                end)
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- VÒNG LẶP AUTO COLLECT CHEST (RADA MODE)
+task.spawn(function()
+    while true do
+        if AutoCollectChestState and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
+
+            local targetChest = nil
+            local shortestDistance = CollectChestRadius + 1
+            local hrpPosition = hrp.Position 
+
+            -- BƯỚC 1: TÌM MỤC TIÊU
+            for _, child in ipairs(workspace:GetDescendants()) do
+                -- [V20.8.1 FIX] Bộ lọc tìm kiếm Model
+                if child.Name == CHEST_MODEL_NAME and child:IsA("Model") then
+                    local clickablePart = child:FindFirstChild(CLICKABLE_PART_NAME)
+
+                    -- CHỈ XÉT KHI PART CÓ CLICK DETECTOR
+                    if clickablePart and clickablePart:FindFirstChildOfClass("ClickDetector") then
+                        if clickablePart:IsA("BasePart") then
+                            local distance = (hrpPosition - clickablePart.Position).Magnitude
+                            if distance < shortestDistance then
+                                shortestDistance = distance
+                                targetChest = clickablePart
+                            end
+                        end
+                    end
+                end
+            end
+
+            -- BƯỚC 2: TELEPORT VÀ CLICK
+            if targetChest then
+                local targetPos = targetChest.Position
+                -- Teleport đến vị trí cách target 5 studs
+                local offset = (hrpPosition - targetPos).Unit * 5
+
+                -- SỬ DỤNG LỆNH TELEPORT MẠNH HƠN (Force CFrame)
+                pcall(function()
+                    hrp.CFrame = CFrame.new(targetPos + offset)
+                end)
+
+                -- Đợi nhân vật ổn định và chắc chắn nó ở đúng chỗ
+                task.wait(0.15)
+
+                local clickDetector = targetChest:FindFirstChildOfClass("ClickDetector")
+                if clickDetector then
+                    pcall(function()
+                        -- Gửi lệnh click (tham số thứ 2 là khoảng cách)
+                        clickDetector:MouseClick(player, targetChest.Position, 0.1)
+                    end)
+                end
+
+                task.wait(0.5) -- Đợi 0.5 giây trước khi tìm hòm tiếp theo
+            else
+                task.wait(1.0) -- Không tìm thấy hòm nào trong phạm vi, đợi lâu hơn
+            end
+        else
+            task.wait(0.5)
+        end
+    end
 end)
 
 
@@ -1002,15 +866,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.2.7 (Auto Haki Adaptive/Spam - No Loot)" 
+foot.Text="NTBA • Farm Hub v21.2.4 (Auto Haki 7s/1s - Đã Fix Lỗi Lặp Vĩnh Viễn)" 
 foot.Parent=Main
 
--- Cleanup khi player leave
-if player then
-    player.AncestryChanged:Connect(function()
-        mainLoopActive = false
-        pcall(function() ScreenGui:Destroy() end)
-    end)
-end
-
-print("NTBA Farm Hub v21.2.7 - Đã sẵn sàng sử dụng.")
+print("NTBA Farm Hub v21.2.4 - Auto Haki đã được sửa lỗi và chạy ổn định.")
