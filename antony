@@ -1,9 +1,5 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.6 (FINAL - BỎ GOD MODE & TAB UTILITY)
--- CHÚ THÍCH CẬP NHẬT:
--- 1. [LOẠI BỎ]: Xóa God Mode và tab "Utility" để tăng tính ổn định và tránh bị phát hiện.
--- 2. [TÍCH HỢP]: Giữ nguyên Auto-detect GUI Cooldown cho Haki Adaptive.
--- 3. [TỐI ƯU]: Đảm bảo Auto Farm NPC sử dụng các Auto Skill (Z, X, C, V) đã bật.
+-- NTBA FARM HUB - V21.2.6 (FINAL FIX: LỖI PHÍM ESC)
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -193,7 +189,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.2.6 - LITE)" -- Cập nhật phiên bản
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.6 - FIX ESC)" -- Cập nhật tên
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -249,11 +245,26 @@ do
     end)
 end
 
--- Xử lý Hotkey (Giữ nguyên)
-UserInputService.InputBegan:Connect(function(input,gpe)
-    if not gpe and input.KeyCode == Hotkey then
+-- BIẾN MỚI: TẠM DỪNG KHI NHẤN ESC
+local isEscPressed = false 
+
+-- Xử lý Hotkey và ESC
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if input.KeyCode == Hotkey and not gpe then
         HubVisible = not HubVisible
         ScreenGui.Enabled = HubVisible
+    end
+
+    -- FIX LỖI ESC: Bật cờ khi ESC được nhấn
+    if input.KeyCode == Enum.KeyCode.Escape then
+        isEscPressed = true
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gpe)
+    -- FIX LỖI ESC: Tắt cờ khi ESC được nhả
+    if input.KeyCode == Enum.KeyCode.Escape then
+        isEscPressed = false
     end
 end)
 
@@ -369,7 +380,7 @@ task.spawn(function()
     while true do
         task.wait(0.5)
         
-        if not AutoFarmNPC then
+        if not AutoFarmNPC and not isEscPressed then
             for key,enabled in pairs(AutoSkillState) do
                 if enabled then
                     pcall(function()
@@ -501,7 +512,7 @@ end
 
 task.spawn(function()
     while true do
-        if AutoFarmNPC and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
+        if AutoFarmNPC and not isEscPressed and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
             findAndFarmNPC()
         end
         task.wait(0.5)
@@ -638,11 +649,11 @@ local function checkCooldown(targetGUI)
     local startTime = tick()
     local maxWait = 5
     
-    while tick() - startTime < maxWait do
+    while tick() - startTime < maxWait and not isEscPressed do -- THÊM CHECK ESC
         local currentVal = simpleReadGUI(targetGUI)
         if currentVal and math.abs(currentVal - startVal) > 0.1 then
             local cooldownStart = tick()
-            while tick() - cooldownStart < maxWait do
+            while tick() - cooldownStart < maxWait and not isEscPressed do -- THÊM CHECK ESC
                 local checkVal = simpleReadGUI(targetGUI)
                 if checkVal and (checkVal <= 0.05 or checkVal >= 0.95) then
                     local duration = tick() - CooldownData.lastPressTime
@@ -669,7 +680,8 @@ task.spawn(function()
     while true do
         local isAnyHakiActive = AutoHakiRState or AutoHakiQState
         
-        if isAnyHakiActive then
+        -- SỬ DỤNG CỜ isEscPressed ĐỂ TẠM DỪNG HOÀN TOÀN TÍNH NĂNG
+        if isAnyHakiActive and not isEscPressed then 
             
             -- TÌM VÀ CẬP NHẬT ĐƯỜNG DẪN GUI
             if not targetGUI and (GuiPathBox.Text == "" or GuiPathBox.Text == "Đường dẫn GUI Cooldown (Ex: PlayerGui.SkillGui.RButton.Bar)") then
@@ -732,8 +744,12 @@ task.spawn(function()
             task.wait(currentWaitTime)
             
         else
-            -- CẬP NHẬT UI KHI TẮT
-            HakiStatusLabel.Text = "Status: OFF | Mode: " .. currentMode .. " | Rate: 0.15s"
+            -- CẬP NHẬT UI KHI TẮT HOẶC KHI ESC ĐƯỢC NHẤN
+            if isEscPressed then
+                 HakiStatusLabel.Text = "Status: ESC PRESSED (Paused)"
+            else
+                HakiStatusLabel.Text = "Status: OFF | Mode: " .. currentMode .. " | Rate: 0.15s"
+            end
             
             -- Đợi lâu hơn khi không chạy
             task.wait(0.5)
@@ -817,7 +833,7 @@ end
 -- VÒNG LẶP AUTO DROP ITEM THƯỜNG
 task.spawn(function()
     while true do
-        if AutoDropItem then
+        if AutoDropItem and not isEscPressed then
             local itemToDrop = findDroppableItemInList(ITEM_DROP_LIST)
 
             if itemToDrop then
@@ -840,7 +856,7 @@ end)
 -- VÒNG LẶP AUTO DROP ITEM PLUS (+)
 task.spawn(function()
     while true do
-        if AutoDropItemPlus then
+        if AutoDropItemPlus and not isEscPressed then
             local itemToDrop = findDroppableItemInList(ITEM_DROP_PLUS_LIST)
 
             if itemToDrop then
@@ -958,4 +974,4 @@ foot.TextColor3 = Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Farm Hub v21.2.6 (Fixed Auto Haki R/Q, Bỏ God Mode - Bỏ Utility)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.2.6 - Đã lược bỏ God Mode và tối ưu hóa Farm Loop.")
+print("NTBA Farm Hub v21.2.6 - Sửa lỗi: Đã cho phép nhấn ESC để mở menu game.")
