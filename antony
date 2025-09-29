@@ -1,9 +1,9 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.6 (BỎ GOD MODE & TAB UTILITY)
+-- NTBA FARM HUB - V21.2.6 (FINAL - BỎ GOD MODE & TAB UTILITY)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [LOẠI BỎ]: Xóa God Mode và tab "Utility".
--- 2. [KIỂM TRA]: Đảm bảo Auto Farm NPC sử dụng Auto Skills.
--- 3. [KIỂM TRA]: Đảm bảo Auto Haki R/Q hoạt động độc lập và ổn định.
+-- 1. [LOẠI BỎ]: Xóa God Mode và tab "Utility" để tăng tính ổn định và tránh bị phát hiện.
+-- 2. [TÍCH HỢP]: Giữ nguyên Auto-detect GUI Cooldown cho Haki Adaptive.
+-- 3. [TỐI ƯU]: Đảm bảo Auto Farm NPC sử dụng các Auto Skill (Z, X, C, V) đã bật.
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -23,11 +23,11 @@ local AutoSkillState={Z=false,X=false,C=false,V=false}
 local AutoDropItem = false
 local AutoDropItemPlus = false
 
--- BIẾN MỚI CHO AUTO HAKI R & Q
-local AutoHakiRState = false -- Điều khiển Haki R (phím chính)
-local AutoHakiQState = false -- Điều khiển Haki Q (phím phụ)
+-- BIẾN CHO AUTO HAKI R & Q
+local AutoHakiRState = false 
+local AutoHakiQState = false 
 
-local Hotkey = Enum.KeyCode.RightControl
+local Hotkey = Enum.KeyCode.RightControl -- Phím tắt ẩn/hiện Hub
 local HubVisible = true
 
 -- HẰNG SỐ CHO HỆ THỐNG AUTO HAKI MỚI
@@ -37,7 +37,7 @@ local MIN_INTERVAL = 0.02
 local MAX_INTERVAL = 3
 local currentMode = "Adaptive" -- Bắt đầu bằng Adaptive
 
--- DỮ LIỆU COOLDOWN CHO AUTO HAKI R (KHÔNG THEO DÕI Q)
+-- DỮ LIỆU COOLDOWN CHO AUTO HAKI R
 local CooldownData = {
     pressCount = 0,
     successCount = 0,
@@ -96,10 +96,12 @@ local function simpleInterval(n)
     return simpleClamp(n, MIN_INTERVAL, MAX_INTERVAL)
 end
 
+-- ĐỌC GIÁ TRỊ THANH GUI
 local function simpleReadGUI(obj)
     if not obj then return nil end
     local ok, val = pcall(function()
         if obj:IsA("GuiObject") then
+            -- Giả định thanh cooldown sử dụng Size.X.Scale
             return obj.Size.X.Scale
         end
         return nil
@@ -107,11 +109,13 @@ local function simpleReadGUI(obj)
     return ok and val or nil
 end
 
+-- HÀM TỰ ĐỘNG DÒ TÌM GUI COOLDOWN
 local function simpleFindGUI()
     local pg = player:FindFirstChild("PlayerGui")
     if not pg then return nil end
     
     for _, obj in ipairs(pg:GetDescendants()) do
+        -- Tìm các đối tượng GUI có tên chứa "bar" hoặc "cooldown"
         if obj:IsA("GuiObject") and (obj.Name:lower():find("bar") or obj.Name:lower():find("cooldown")) then
             return obj
         end
@@ -130,7 +134,7 @@ local function getSmartInterval()
     end
     local avg = total / #CooldownData.lastSamples
     
-    -- Nhấn sớm hơn 0.05s
+    -- Nhấn sớm hơn 0.05s so với thời gian hồi chiêu trung bình
     return simpleClamp(avg - 0.05, MIN_INTERVAL, MAX_INTERVAL)
 end
 
@@ -189,7 +193,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.2.6)" -- Cập nhật phiên bản
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.6 - LITE)" -- Cập nhật phiên bản
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -597,7 +601,7 @@ do
     end)
     y = y + 36
 
-    -- Textbox path GUI
+    -- Textbox path GUI (Auto-detect sẽ điền vào đây)
     GuiPathBox = Instance.new("TextBox", p)
     GuiPathBox.Size = UDim2.new(1, -10, 0, 20)
     GuiPathBox.Position = UDim2.new(0, 5, 0, y)
@@ -668,13 +672,14 @@ task.spawn(function()
         if isAnyHakiActive then
             
             -- TÌM VÀ CẬP NHẬT ĐƯỜNG DẪN GUI
-            if not targetGUI and GuiPathBox.Text == "" or GuiPathBox.Text == "Đường dẫn GUI Cooldown (Ex: PlayerGui.SkillGui.RButton.Bar)" then
-                local autoDetected = simpleFindGUI()
+            if not targetGUI and (GuiPathBox.Text == "" or GuiPathBox.Text == "Đường dẫn GUI Cooldown (Ex: PlayerGui.SkillGui.RButton.Bar)") then
+                local autoDetected = simpleFindGUI() -- <--- CƠ CHẾ AUTO-DETECT
                 if autoDetected then
                     targetGUI = autoDetected
                     GuiPathBox.Text = targetGUI:GetFullName()
                 end
             elseif not targetGUI and GuiPathBox.Text ~= "" then
+                -- Lấy đường dẫn thủ công
                 local parts = {}
                 for part in GuiPathBox.Text:gmatch("[^%.]+") do table.insert(parts, part) end
                 
@@ -690,12 +695,12 @@ task.spawn(function()
             if AutoHakiRState then
                 CooldownData.pressCount = CooldownData.pressCount + 1
                 CooldownData.lastPressTime = tick()
-                doKeyTap("R")
+                doKeyTap(Enum.KeyCode.R)
             end
 
             -- THỰC HIỆN NHẤN PHÍM Q
             if AutoHakiQState then
-                doKeyTap("Q")
+                doKeyTap(Enum.KeyCode.Q)
             end
             
             -- KIỂM TRA COOLDOWN & CẬP NHẬT INTERVAL (chỉ khi R bật)
@@ -728,7 +733,7 @@ task.spawn(function()
             
         else
             -- CẬP NHẬT UI KHI TẮT
-            HakiStatusLabel.Text = "Status: OFF | Mode: " .. currentMode .. " | Presses: " .. CooldownData.pressCount
+            HakiStatusLabel.Text = "Status: OFF | Mode: " .. currentMode .. " | Rate: 0.15s"
             
             -- Đợi lâu hơn khi không chạy
             task.wait(0.5)
