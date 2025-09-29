@@ -1,9 +1,10 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.0.0 (CODE HOÀN CHỈNH)
+-- NTBA FARM HUB - V21.1.0 (CODE HOÀN CHỈNH)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [V21.0.0 FIX]: Tối ưu hóa God Mode bằng RunService.Heartbeat (hiệu quả và ổn định hơn).
--- 2. [V20.8.1 -> V21.0.0]: Cập nhật thống nhất tên phiên bản trên UI và Code.
--- 3. [V20.8.1 FIX]: Đã thêm logic Auto Drop Item Plus (+) và Fix lỗi Loot Chest (Crate).
+-- 1. [V21.1.0 FIX]: Cập nhật chu kỳ Auto Haki (R) từ (Giữ 6s, nghỉ 1s) thành (Giữ 7s, nghỉ 3s).
+-- 2. [V21.0.0 FIX]: Tối ưu hóa God Mode bằng RunService.Heartbeat.
+-- 3. [V20.8.1 -> V21.0.0]: Cập nhật thống nhất tên phiên bản trên UI và Code.
+-- 4. [V20.8.1 FIX]: Đã thêm logic Auto Drop Item Plus (+) và Fix lỗi Loot Chest (Crate).
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -20,11 +21,10 @@ local FarmRadius = 150
 local AutoSkillState={Z=false,X=false,C=false,V=false}
 local AutoHakiState=false
 local AutoDropItem = false
-local AutoDropItemPlus = false -- BIẾN MỚI CHO DROP +
+local AutoDropItemPlus = false 
 local Hotkey = Enum.KeyCode.RightControl
 local HubVisible = true
 
--- CHỈ CÒN BIẾN GOD MODE
 local GodModeState = false
 
 -- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.8.1 - ĐÃ SỬA ]]
@@ -121,7 +121,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.0.0)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.1.0)" -- CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -305,7 +305,7 @@ do
     local p = AutoNPCPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 24)
+    label.Size = UDim2.new(1, 0, 0, y)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -430,7 +430,7 @@ do
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 14
     lbl.TextColor3 = Color3.fromRGB(220,220,220)
-    lbl.Text="Auto Haki (Giữ R trong 6s, nghỉ 1s)"
+    lbl.Text="Auto Haki (Giữ R trong 7s, nghỉ 3s)" -- Cập nhật chú thích UI
 
     local btn=Instance.new("TextButton",p)
     btn.Size=UDim2.new(0,140,0,32)
@@ -451,24 +451,24 @@ do
     end)
 end
 
--- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ
+-- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.1.0)
 task.spawn(function()
     while true do
         if AutoHakiState and player.Character then
 
-            -- 1. Bấm và GIỮ R (6 giây)
+            -- 1. Bấm và GIỮ R (7 giây)
             pcall(function()
                 VirtualInputManager:SendKeyEvent(true,"R",false,game)
             end)
 
-            task.wait(6.0) -- Giữ phím R trong 6 giây
+            task.wait(7.0) -- Giữ phím R trong 7 giây
 
             -- 2. NHẢ R
             pcall(function()
                 VirtualInputManager:SendKeyEvent(false,"R",false,game)
             end)
 
-            task.wait(1.0) -- Đợi 1 giây trước khi lặp lại chu kỳ
+            task.wait(3.0) -- Đợi 3 giây trước khi lặp lại chu kỳ
 
         else
             -- Nếu tắt, đợi ngắn hơn để giảm tải CPU
@@ -478,12 +478,12 @@ task.spawn(function()
 end)
 
 
-local FruitMixPanel = panels["Fruit Mix"] -- ĐÃ ĐỔI TÊN
+local FruitMixPanel = panels["Fruit Mix"]
 do
     local p = FruitMixPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 24)
+    label.Size = UDim2.new(1, 0, 0, y)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -496,7 +496,7 @@ do
     local dropBtn = Instance.new("TextButton", p)
     dropBtn.Size = UDim2.new(0, 280, 0, 32)
     dropBtn.Position = UDim2.new(0, 10, 0, y)
-    dropBtn.Text = "Auto Drop Item (Thường): OFF" -- Đã đổi tên UI cho rõ ràng
+    dropBtn.Text = "Auto Drop Item (Thường): OFF"
     dropBtn.Font = Enum.Font.GothamBold
     dropBtn.TextSize = 14
     dropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -796,7 +796,7 @@ task.spawn(function()
 
             local targetChest = nil
             local shortestDistance = CollectChestRadius + 1
-            local hrpPosition = hrp.Position -- Lấy vị trí hiện tại của nhân vật (Tâm Rada)
+            local hrpPosition = hrp.Position 
 
             -- BƯỚC 1: TÌM MỤC TIÊU
             for _, child in ipairs(workspace:GetDescendants()) do
@@ -857,7 +857,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.0.0 (God Mode Tối Ưu & Drop +)" -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN VÀ CHÚ THÍCH
+foot.Text="NTBA • Farm Hub v21.1.0 (Auto Haki 7s/3s)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.0.0 - Logic God Mode tối ưu & Nâng cấp phiên bản.") -- [V21.0.0 FIX] CẬP NHẬT PHIÊN BẢN
+print("NTBA Farm Hub v21.1.0 - Auto Haki đã cập nhật chu kỳ (7s giữ, 3s nghỉ).")
