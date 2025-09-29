@@ -1,8 +1,8 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.6 (ĐÃ SỬA LỖI UI AUTO HAKI)
+-- NTBA FARM HUB - V21.2.7 (ĐÃ BỎ AUTO LOOT CHEST/FRUIT MIX)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. Hoàn thiện việc tích hợp GUI và logic điều khiển cho Auto Haki/Auto Q vào Panel "AutoHaki" của Hub.
--- 2. Đảm bảo các nút chức năng hoạt động đúng khi chạy qua Xeno.
+-- 1. Xóa hoàn toàn chức năng Auto Loot Chest (Fruit Mix) và các biến liên quan.
+-- 2. Giữ nguyên và tối ưu các chức năng Auto Farm NPC, Auto Haki và Auto Drop Item.
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -26,12 +26,6 @@ local AutoDropItemPlus = false 
 local Hotkey = Enum.KeyCode.RightControl
 local HubVisible = true
 local GodModeState = false
-
--- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) ]]
-local AutoCollectChestState = false
-local CollectChestRadius = 250
-local CHEST_MODEL_NAME = "Crate" 
-local CLICKABLE_PART_NAME = "Crate" 
 
 -- BIẾN AUTO HAKI
 local DEFAULT_KEY = "R"
@@ -182,7 +176,7 @@ end
 
 
 -- ================================================================= --
--- PHẦN UI CỦA HUB CHÍNH (KHÔNG THAY ĐỔI NHIỀU)
+-- PHẦN UI CỦA HUB CHÍNH
 -- ================================================================= --
 local MAIN_W, MAIN_H = 600, 380
 local Sidebar_W = 130
@@ -220,7 +214,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.2.6)" -- CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.7 - No Loot)" -- CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -292,7 +286,7 @@ Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
-local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit Mix","Utility","Settings"}
+local tabs = {"AutoFarm","AutoNPC","AutoHaki","Drop Items","Utility","Settings"} -- ĐỔI TÊN TAB
 local tabButtons, panels = {}, {}
 
 local SidebarLayout = Instance.new("UIListLayout", Sidebar)
@@ -347,7 +341,6 @@ end
 
 -- ================================================================= --
 -- PANEL AUTO FARM (SKILL Z,X,C,V) & NPC
--- (GIỮ NGUYÊN)
 -- ================================================================= --
 
 local AutoFarmPanel = panels["AutoFarm"]
@@ -528,7 +521,7 @@ end)
 
 
 -- ================================================================= --
--- PANEL AUTO HAKI (ĐÃ SỬA LỖI UI)
+-- PANEL AUTO HAKI (ADAPTIVE/SPAM)
 -- ================================================================= --
 local AutoHakiPanel = panels["AutoHaki"]
 local targetGUI = nil
@@ -762,10 +755,10 @@ task.spawn(function()
 end)
 
 -- ================================================================= --
--- CÁC PANEL KHÁC VÀ CLEANUP (GIỮ NGUYÊN)
+-- PANEL AUTO DROP ITEMS (FRUIT MIX)
 -- ================================================================= --
 
-local FruitMixPanel = panels["Fruit Mix"]
+local FruitMixPanel = panels["Drop Items"] -- ĐỔI TÊN PANEL TƯƠNG ỨNG
 do
     local p = FruitMixPanel
     local y = 6
@@ -821,80 +814,6 @@ do
     end)
     y = y + 42
 
-    -- NÚT AUTO FRUIT MIX (COLLECT CHEST)
-    local collectBtn = Instance.new("TextButton", p)
-    collectBtn.Size = UDim2.new(0, 280, 0, 32)
-    collectBtn.Position = UDim2.new(0, 10, 0, y)
-    collectBtn.Text = "Auto Fruit Mix (Loot Chests): OFF"
-    collectBtn.Font = Enum.Font.GothamBold
-    collectBtn.TextSize = 13
-    collectBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    collectBtn.BackgroundColor3 = Color3.fromRGB(150, 150, 50)
-    collectBtn.BackgroundTransparency = 0.15
-    collectBtn.BorderSizePixel = 0
-    Instance.new("UICorner", collectBtn).CornerRadius = UDim.new(0, 6)
-
-    collectBtn.MouseButton1Click:Connect(function()
-        AutoCollectChestState = not AutoCollectChestState
-        collectBtn.Text = "Auto Fruit Mix (Loot Chests): " .. (AutoCollectChestState and "ON" or "OFF")
-        collectBtn.BackgroundColor3 = AutoCollectChestState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(150, 150, 50)
-        collectBtn.BackgroundTransparency = AutoCollectChestState and 0.1 or 0.15
-    end)
-    y = y + 42
-
-    -- PHẠM VI TÙY CHỈNH
-    local radiusLabel = Instance.new("TextLabel", p)
-    radiusLabel.Size = UDim2.new(0, 180, 0, 24)
-    radiusLabel.Position = UDim2.new(0, 10, 0, y)
-    radiusLabel.BackgroundTransparency = 1
-    radiusLabel.Font = Enum.Font.Gotham
-    radiusLabel.TextSize = 12
-    radiusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    radiusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    local function updateRadiusLabel()
-        radiusLabel.Text = "Phạm vi Loot Rada (100-350): " .. CollectChestRadius
-    end
-    updateRadiusLabel()
-    y = y + 28
-
-    local radiusInput = Instance.new("TextBox", p)
-    radiusInput.Size = UDim2.new(0, 80, 0, 32)
-    radiusInput.Position = UDim2.new(0, 10, 0, y)
-    radiusInput.PlaceholderText = "100-350"
-    radiusInput.Text = tostring(CollectChestRadius)
-    radiusInput.Font = Enum.Font.Gotham
-    radiusInput.TextSize = 14
-    radiusInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-    radiusInput.BackgroundColor3 = Color3.fromRGB(40, 40, 44)
-    radiusInput.BackgroundTransparency = 0.15
-    radiusInput.TextXAlignment = Enum.TextXAlignment.Center
-    Instance.new("UICorner", radiusInput).CornerRadius = UDim.new(0, 6)
-
-    local setRadiusBtn = Instance.new("TextButton", p)
-    setRadiusBtn.Size = UDim2.new(0, 100, 0, 32)
-    setRadiusBtn.Position = UDim2.new(0, 100, 0, y)
-    setRadiusBtn.Text = "SET"
-    setRadiusBtn.Font = Enum.Font.GothamBold
-    setRadiusBtn.TextSize = 14
-    setRadiusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    setRadiusBtn.BackgroundColor3 = Color3.fromRGB(80, 150, 80)
-    setRadiusBtn.BackgroundTransparency = 0.15
-    Instance.new("UICorner", setRadiusBtn).CornerRadius = UDim.new(0, 6)
-
-    setRadiusBtn.MouseButton1Click:Connect(function()
-        local newRadius = tonumber(radiusInput.Text)
-        if newRadius and newRadius >= 100 and newRadius <= 350 then
-            CollectChestRadius = newRadius
-            updateRadiusLabel()
-            radiusInput.Text = tostring(CollectChestRadius)
-        else
-            radiusInput.Text = "LỖI! 100-350"
-            task.wait(1)
-            radiusInput.Text = tostring(CollectChestRadius)
-        end
-    end)
-    y = y + 42
-
     local note = Instance.new("TextLabel", p)
     note.Size = UDim2.new(1, -20, 0, 40)
     note.Position = UDim2.new(0, 10, 0, y)
@@ -904,7 +823,7 @@ do
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    note.Text = string.format("Auto Fruit Mix: Tìm Model '%s', Teleport & click Part '%s'. Phạm vi Rada đi theo nhân vật.", CHEST_MODEL_NAME, CLICKABLE_PART_NAME)
+    note.Text = "Chức năng này dùng cho các game có tính năng Fruit Mix hoặc cần drop item thừa. Phím Drop: Backspace."
 end
 
 
@@ -1075,64 +994,6 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP AUTO COLLECT CHEST (RADA MODE)
-task.spawn(function()
-    while true do
-        if AutoCollectChestState and hrp and hrp.Parent and hrp.Parent:FindFirstChildOfClass("Humanoid").Health > 0 then
-
-            local targetChest = nil
-            local shortestDistance = CollectChestRadius + 1
-            local hrpPosition = hrp.Position 
-
-            -- BƯỚC 1: TÌM MỤC TIÊU
-            for _, child in ipairs(workspace:GetDescendants()) do
-                if child.Name == CHEST_MODEL_NAME and child:IsA("Model") then
-                    local clickablePart = child:FindFirstChild(CLICKABLE_PART_NAME)
-
-                    -- CHỈ XÉT KHI PART CÓ CLICK DETECTOR
-                    if clickablePart and clickablePart:FindFirstChildOfClass("ClickDetector") then
-                        if clickablePart:IsA("BasePart") then
-                            local distance = (hrpPosition - clickablePart.Position).Magnitude
-                            if distance < shortestDistance then
-                                shortestDistance = distance
-                                targetChest = clickablePart
-                            end
-                        end
-                    end
-                end
-            end
-
-            -- BƯỚC 2: TELEPORT VÀ CLICK
-            if targetChest then
-                local targetPos = targetChest.Position
-                -- Teleport đến vị trí cách target 5 studs
-                local offset = (hrpPosition - targetPos).Unit * 5
-
-                -- SỬ DỤNG LỆNH TELEPORT MẠNH HƠN (Force CFrame)
-                pcall(function()
-                    hrp.CFrame = CFrame.new(targetPos + offset)
-                end)
-
-                -- Đợi nhân vật ổn định và chắc chắn nó ở đúng chỗ
-                task.wait(0.15)
-
-                local clickDetector = targetChest:FindFirstChildOfClass("ClickDetector")
-                if clickDetector then
-                    pcall(function()
-                        -- Gửi lệnh click (tham số thứ 2 là khoảng cách)
-                        clickDetector:MouseClick(player, targetChest.Position, 0.1)
-                    end)
-                end
-
-                task.wait(0.5) -- Đợi 0.5 giây trước khi tìm hòm tiếp theo
-            else
-                task.wait(1.0) -- Không tìm thấy hòm nào trong phạm vi, đợi lâu hơn
-            end
-        else
-            task.wait(0.5)
-        end
-    end
-end)
 
 local foot=Instance.new("TextLabel")
 foot.Size=UDim2.new(1,0,0,16)
@@ -1141,7 +1002,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.2.6 (Auto Haki Adaptive/Spam - Đã sửa lỗi UI)" 
+foot.Text="NTBA • Farm Hub v21.2.7 (Auto Haki Adaptive/Spam - No Loot)" 
 foot.Parent=Main
 
 -- Cleanup khi player leave
@@ -1152,4 +1013,4 @@ if player then
     end)
 end
 
-print("NTBA Farm Hub v21.2.6 - Đã sửa lỗi UI và sẵn sàng sử dụng.")
+print("NTBA Farm Hub v21.2.7 - Đã sẵn sàng sử dụng.")
