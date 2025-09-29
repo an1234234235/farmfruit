@@ -1,9 +1,9 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.1 (CODE HOÀN CHỈNH)
+-- NTBA FARM HUB - V21.2.2 (CODE HOÀN CHỈNH)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [V21.2.1 FIX]: Đảm bảo Auto Skill (Z,X,C,V) và Auto Haki (R) chạy độc lập 
---    (trên các luồng task.spawn khác nhau) để không bị ngắt quãng.
--- 2. [V21.2.0 FIX]: Cập nhật chu kỳ Auto Haki (R) thành (Giữ 7s, nghỉ 1s).
+-- 1. [V21.2.2 FIX]: Sửa lỗi Auto Haki chỉ chạy 1 lần (đảm bảo vòng lặp vĩnh viễn).
+-- 2. [V21.2.1 FIX]: Đảm bảo Auto Skill (Z,X,C,V) và Auto Haki (R) chạy độc lập.
+-- 3. [V21.2.0 FIX]: Cập nhật chu kỳ Auto Haki (R) thành (Giữ 7s, nghỉ 1s).
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -120,7 +120,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.2.1)" -- CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.2)" -- CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -458,7 +458,7 @@ do
     end)
 end
 
--- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.2.1) - CHẠY ĐỘC LẬP
+-- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.2.2 FIX - Ổn định vòng lặp)
 task.spawn(function()
     while true do
         if AutoHakiState and player.Character then
@@ -475,10 +475,14 @@ task.spawn(function()
                 VirtualInputManager:SendKeyEvent(false,"R",false,game)
             end)
 
+            -- Đợi ngắn 10ms để đảm bảo phím được nhả trước khi lặp lại.
+            task.wait(0.01)
+
+            -- 3. NGHỈ
             task.wait(1.0) -- Đợi 1 giây trước khi lặp lại chu kỳ
 
         else
-            -- Nếu tắt, đợi ngắn hơn để giảm tải CPU
+            -- Nếu tắt, đợi ngắn hơn
             task.wait(0.5)
         end
     end
@@ -863,7 +867,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.2.1 (Auto Haki 7s/1s - Tối ưu đa nhiệm)" 
+foot.Text="NTBA • Farm Hub v21.2.2 (Auto Haki 7s/1s - Đã Fix Lỗi Lặp)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.2.1 - Auto Haki và Auto Skill đã được tối ưu để chạy độc lập.")
+print("NTBA Farm Hub v21.2.2 - Auto Haki đã được sửa lỗi và chạy ổn định.")
