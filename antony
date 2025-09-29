@@ -1,10 +1,9 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.1.0 (CODE HOÀN CHỈNH)
+-- NTBA FARM HUB - V21.2.1 (CODE HOÀN CHỈNH)
 -- CHÚ THÍCH CẬP NHẬT:
--- 1. [V21.1.0 FIX]: Cập nhật chu kỳ Auto Haki (R) từ (Giữ 6s, nghỉ 1s) thành (Giữ 7s, nghỉ 3s).
--- 2. [V21.0.0 FIX]: Tối ưu hóa God Mode bằng RunService.Heartbeat.
--- 3. [V20.8.1 -> V21.0.0]: Cập nhật thống nhất tên phiên bản trên UI và Code.
--- 4. [V20.8.1 FIX]: Đã thêm logic Auto Drop Item Plus (+) và Fix lỗi Loot Chest (Crate).
+-- 1. [V21.2.1 FIX]: Đảm bảo Auto Skill (Z,X,C,V) và Auto Haki (R) chạy độc lập 
+--    (trên các luồng task.spawn khác nhau) để không bị ngắt quãng.
+-- 2. [V21.2.0 FIX]: Cập nhật chu kỳ Auto Haki (R) thành (Giữ 7s, nghỉ 1s).
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -30,8 +29,8 @@ local GodModeState = false
 -- [[ THÔNG SỐ LOOT FRUIT MIX (CHEST) V20.8.1 - ĐÃ SỬA ]]
 local AutoCollectChestState = false
 local CollectChestRadius = 250
-local CHEST_MODEL_NAME = "Crate" -- ĐÃ SỬA: Thay "stall" bằng "Crate"
-local CLICKABLE_PART_NAME = "Crate" -- ĐÃ SỬA: Thay "Part" bằng "Crate" (Giả định Part chứa ClickDetector)
+local CHEST_MODEL_NAME = "Crate" 
+local CLICKABLE_PART_NAME = "Crate" 
 -- ---------------------------------------------------
 
 -- DANH SÁCH DROP CŨ (TRÁI CÂY, MIX THƯỜNG)
@@ -121,7 +120,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.1.0)" -- CẬP NHẬT PHIÊN BẢN
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.1)" -- CẬP NHẬT PHIÊN BẢN
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -247,8 +246,9 @@ for name, btn in pairs(tabButtons) do
     end)
 end
 
+local AutoFarmPanel = panels["AutoFarm"]
 do
-    local p = panels["AutoFarm"]
+    local p = AutoFarmPanel
     local y=6
     local label=Instance.new("TextLabel",p)
     label.Size=UDim2.new(1,0,0,24)
@@ -285,16 +285,23 @@ do
         end)
     end
 end
+
+-- VÒNG LẶP AUTO SKILL (CHẠY ĐỘC LẬP VỚI HAKI)
 task.spawn(function()
     while true do
         task.wait(0.5)
-        for key,enabled in pairs(AutoSkillState) do
-            if enabled and not AutoFarmNPC then
-                pcall(function()
-                    VirtualInputManager:SendKeyEvent(true,key,false,game)
-                    task.wait(0.04)
-                    VirtualInputManager:SendKeyEvent(false,key,false,game)
-                end)
+        
+        -- Chạy Z, X, C, V (Dù Haki có đang bật hay không - độc lập)
+        if not AutoFarmNPC then
+            for key,enabled in pairs(AutoSkillState) do
+                if enabled then
+                    pcall(function()
+                        -- NHẤN VÀ NHẢ PHÍM NGAY LẬP TỨC
+                        VirtualInputManager:SendKeyEvent(true,key,false,game)
+                        task.wait(0.04)
+                        VirtualInputManager:SendKeyEvent(false,key,false,game)
+                    end)
+                end
             end
         end
     end
@@ -430,7 +437,7 @@ do
     lbl.Font = Enum.Font.GothamBold
     lbl.TextSize = 14
     lbl.TextColor3 = Color3.fromRGB(220,220,220)
-    lbl.Text="Auto Haki (Giữ R trong 7s, nghỉ 3s)" -- Cập nhật chú thích UI
+    lbl.Text="Auto Haki (Giữ R trong 7s, nghỉ 1s)" -- Cập nhật chú thích UI
 
     local btn=Instance.new("TextButton",p)
     btn.Size=UDim2.new(0,140,0,32)
@@ -451,7 +458,7 @@ do
     end)
 end
 
--- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.1.0)
+-- VÒNG LẶP AUTO HAKI: GIỮ PHÍM THEO CHU KỲ (v21.2.1) - CHẠY ĐỘC LẬP
 task.spawn(function()
     while true do
         if AutoHakiState and player.Character then
@@ -468,7 +475,7 @@ task.spawn(function()
                 VirtualInputManager:SendKeyEvent(false,"R",false,game)
             end)
 
-            task.wait(3.0) -- Đợi 3 giây trước khi lặp lại chu kỳ
+            task.wait(1.0) -- Đợi 1 giây trước khi lặp lại chu kỳ
 
         else
             -- Nếu tắt, đợi ngắn hơn để giảm tải CPU
@@ -617,7 +624,6 @@ do
     note.TextColor3 = Color3.fromRGB(255, 170, 170)
     note.TextXAlignment = Enum.TextXAlignment.Left
     note.TextWrap = true
-    -- ĐÃ CẬP NHẬT TEXT:
     note.Text = string.format("Auto Fruit Mix: Tìm Model '%s', Teleport & click Part '%s'. Phạm vi Rada đi theo nhân vật.", CHEST_MODEL_NAME, CLICKABLE_PART_NAME)
 end
 
@@ -857,7 +863,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.1.0 (Auto Haki 7s/3s)" 
+foot.Text="NTBA • Farm Hub v21.2.1 (Auto Haki 7s/1s - Tối ưu đa nhiệm)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.1.0 - Auto Haki đã cập nhật chu kỳ (7s giữ, 3s nghỉ).")
+print("NTBA Farm Hub v21.2.1 - Auto Haki và Auto Skill đã được tối ưu để chạy độc lập.")
