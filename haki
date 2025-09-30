@@ -1,117 +1,42 @@
 local DEFAULT_KEY = "R"
+local SECONDARY_KEY = "Q"  -- Thêm phím Q
+local HOLD_DURATION = 7    -- Giữ phím bao lâu (giây)
 local HOTKEY_TOGGLE = Enum.KeyCode.F6
-local GUI_NAME = "AutoCastingHoldRelease_XenoV2"
-local BAR_PATH = "PlayerGui.Blindness.Frame.Frame.Bar1" -- ĐƯỜNG DẪN BAR CỐ ĐỊNH
-
--- ================================================================= --
---                 SERVICES AND LOCAL VARIABLES
--- ================================================================= --
+local GUI_NAME = "AutoHakiHoldKey_v1"
+local MIN_INTERVAL = 0.02
+local MAX_INTERVAL = 3
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local VIM = game:GetService('VirtualInputManager') -- VirtualInputManager có thể bị chặn
+local RunService = game:GetService("RunService")
 
+-- Cleanup triệt để
 pcall(function()
     if CoreGui:FindFirstChild(GUI_NAME) then CoreGui[GUI_NAME]:Destroy() end
+    if LocalPlayer.PlayerGui:FindFirstChild(GUI_NAME) then LocalPlayer.PlayerGui[GUI_NAME]:Destroy() end
 end)
 
-local isRunning = false
-local mainLoopActive = true
-local pressCount = 0
--- inputMode: 1: UserInputService:SimulateKeyPress (Thường ổn hơn VIM trên các Executor)
---            2: VirtualInputManager (Nếu 1 không chạy, thử cái này)
---            3: Legacy (Chỉ dùng khi 1 và 2 hoàn toàn không hoạt động)
-local inputMode = 1 
-
--- ================================================================= --
---                 CORE INPUT FUNCTIONS (ĐA NĂNG)
--- ================================================================= --
-
--- 🔥 Hàm Giả Lập Nhấn Phím Tối Ưu và Đa Năng
-local function sendKeyEvent(keyName, isDown)
-    local keyEnum = Enum.KeyCode[keyName] 
-    if not keyEnum then 
-        warn("Invalid KeyCode specified:", keyName)
-        return false 
-    end
-    
-    local success = pcall(function()
-        if inputMode == 1 then
-            -- PHƯƠNG PHÁP 1: UserInputService:SimulateKeyPress (Thường hoạt động tốt trên nhiều Executor)
-            local input = Instance.new("InputObject")
-            input.UserInputType = Enum.UserInputType.Keyboard
-            input.KeyCode = keyEnum
-            input.UserInputState = isDown and Enum.UserInputState.Begin or Enum.UserInputState.End
-            UserInputService:SimulateKeyPress(input, true)
-            
-        elseif inputMode == 2 then
-            -- PHƯƠNG PHÁP 2: VirtualInputManager (Nếu UIS:Simulate không hoạt động, thử cái này)
-            VIM:SendKeyEvent(isDown, keyEnum, false, game)
-            
-        elseif inputMode == 3 then
-            -- PHƯƠNG PHÁP 3: Legacy Executor Method (Nếu 1 và 2 không hoạt động)
-            -- Đây là cách khai thác các hàm riêng của Executor, chỉ hoạt động trên một số Executor nhất định
-            if rawget(_G, "setsimulatorproperty") then
-                 setsimulatorproperty(keyName, isDown)
-            else
-                 -- Quay lại UIS:Simulate nếu Legacy không tồn tại hoặc không được hỗ trợ
-                 warn("Legacy method 'setsimulatorproperty' not found. Falling back to UIS:Simulate.")
-                 local input = Instance.new("InputObject")
-                 input.UserInputType = Enum.UserInputType.Keyboard
-                 input.KeyCode = keyEnum
-                 input.UserInputState = isDown and Enum.UserInputState.Begin or Enum.UserInputState.End
-                 UserInputService:SimulateKeyPress(input, true)
-            end
-        end
+-- Hàm giữ phím (hold)
+local function holdKey(keyName, holdTime)
+    local vim = game:GetService('VirtualInputManager')
+    pcall(function()
+        vim:SendKeyEvent(true, keyName, false, game)
     end)
-    
-    if not success then
-        warn("Failed to send key event using mode", inputMode, "for key", keyName, "isDown:", isDown)
-    end
-    return success
-end
-
--- ================================================================= --
---                             BAR & PATH LOGIC (Giữ nguyên)
--- ================================================================= --
-
-local function readBarValue(barObject)
-    if not barObject then return 0 end
-    local ok, val = pcall(function()
-        if barObject:IsA("GuiObject") and barObject.Size.X.Scale then
-            return barObject.Size.X.Scale 
-        end
-        return 0
+    task.wait(holdTime)
+    pcall(function()
+        vim:SendKeyEvent(false, keyName, false, game)
     end)
-    return ok and val or 0
 end
 
-local function findBarByPath(path)
-    if not path or path == "" then return nil end
-    local current = game
-    for part in path:gmatch("[^%.]+") do
-        if part == LocalPlayer.Name and current == game.Players then -- Xử lý trường hợp "LocalPlayer.Name"
-            current = LocalPlayer
-        else
-            current = current:FindFirstChild(part)
-        end
-        if not current then return nil end
-    end
-    return current
-end
-
--- ================================================================= --
---                             GUI SETUP
--- ================================================================= --
-
+-- GUI đơn giản
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = GUI_NAME
 screenGui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 320, 0, 190) -- Tăng chiều cao
+frame.Size = UDim2.new(0, 350, 0, 140)
 frame.Position = UDim2.new(0.01, 0, 0.1, 0)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 1
@@ -121,7 +46,7 @@ frame.Parent = screenGui
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 25)
 title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-title.Text = "Auto-Casting XENO FIX V2 (HOLD/RELEASE)"
+title.Text = "AutoHaki HOLD KEY v1.0"
 title.TextColor3 = Color3.fromRGB(0, 255, 0)
 title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
@@ -131,49 +56,40 @@ local status = Instance.new("TextLabel")
 status.Size = UDim2.new(1, -10, 0, 20)
 status.Position = UDim2.new(0, 5, 0, 30)
 status.BackgroundTransparency = 1
-status.Text = "🔴 OFF | Key: R | Bar: 0.00"
+status.Text = "🔴 OFF | Hold: 7s | Presses: 0"
 status.TextColor3 = Color3.fromRGB(200, 200, 200)
 status.TextXAlignment = Enum.TextXAlignment.Left
 status.Font = Enum.Font.SourceSans
 status.TextSize = 14
 status.Parent = frame
 
-local modeBtn = Instance.new("TextButton")
-modeBtn.Size = UDim2.new(0, 130, 0, 30)
-modeBtn.Position = UDim2.new(0, 5, 0, 60)
-modeBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 150)
-modeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-modeBtn.Text = "Mode 1: UIS Simulate (Default)" -- Cập nhật mặc định
-modeBtn.Font = Enum.Font.SourceSansBold
-modeBtn.TextSize = 12
-modeBtn.Parent = frame
+-- Thêm toggle cho phím Q
+local qToggleBtn = Instance.new("TextButton")
+qToggleBtn.Size = UDim2.new(0, 120, 0, 20)
+qToggleBtn.Position = UDim2.new(0, 5, 0, 55)
+qToggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+qToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+qToggleBtn.Text = "🔘 Also Hold Q: OFF"
+qToggleBtn.Font = Enum.Font.SourceSans
+qToggleBtn.TextSize = 12
+qToggleBtn.Parent = frame
 
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0, 100, 0, 30)
-toggleBtn.Position = UDim2.new(1, -105, 0, 60)
-toggleBtn.AnchorPoint = Vector2.new(1, 0)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.Text = "START (F6)"
-toggleBtn.Font = Enum.Font.SourceSansBold
-toggleBtn.TextSize = 16
-toggleBtn.Parent = frame
-
-local pathLabel = Instance.new("TextLabel")
-pathLabel.Size = UDim2.new(1, -10, 0, 20)
-pathLabel.Position = UDim2.new(0, 5, 0, 100)
-pathLabel.BackgroundTransparency = 1
-pathLabel.Text = "Bar Path: " .. BAR_PATH
-pathLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
-pathLabel.TextSize = 10
-pathLabel.TextXAlignment = Enum.TextXAlignment.Left
-pathLabel.Parent = frame
+local pathBox = Instance.new("TextBox")
+pathBox.Size = UDim2.new(1, -10, 0, 20)
+pathBox.Position = UDim2.new(0, 5, 0, 80)
+pathBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+pathBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+pathBox.PlaceholderText = "Auto-detecting GUI..."
+pathBox.ClearTextOnFocus = false
+pathBox.Font = Enum.Font.SourceSans
+pathBox.TextSize = 12
+pathBox.Parent = frame
 
 local infoLabel = Instance.new("TextLabel")
-infoLabel.Size = UDim2.new(1, -10, 0, 40)
-infoLabel.Position = UDim2.new(0, 5, 0, 125)
+infoLabel.Size = UDim2.new(1, -10, 0, 30)
+infoLabel.Position = UDim2.new(0, 5, 0, 105)
 infoLabel.BackgroundTransparency = 1
-infoLabel.Text = "Waiting for Bar... Use F6 to toggle."
+infoLabel.Text = "Ready... Press F6 để bắt đầu. Sẽ giữ phím 7s sau khi hết cooldown."
 infoLabel.TextColor3 = Color3.fromRGB(150, 150, 255)
 infoLabel.TextSize = 12
 infoLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -182,50 +98,141 @@ infoLabel.Parent = frame
 
 screenGui.Parent = CoreGui
 
--- ================================================================= --
---                             MAIN LOGIC
--- ================================================================= --
+local isRunning = false
+local useQKey = false
+local pressCount = 0
 
-local function updateUI(barValue)
-    local modeText = ""
-    if inputMode == 1 then modeText = "Mode 1: UIS Simulate (Default)" end
-    if inputMode == 2 then modeText = "Mode 2: VIM (Alt)" end
-    if inputMode == 3 then modeText = "Mode 3: Legacy (Old Executor)" end
-    
-    modeBtn.Text = modeText
-
-    status.Text = string.format("%s | Key: %s | Bar Value: %.2f",
-        isRunning and "🟢 ON" or "🔴 OFF",
-        DEFAULT_KEY,
-        barValue
-    )
+-- ĐỌC GUI VALUE ĐƠN GIẢN
+local function simpleReadGUI(obj)
+    if not obj then return nil end
+    local ok, val = pcall(function()
+        if obj:IsA("GuiObject") then
+            return obj.Size.X.Scale
+        end
+        return nil
+    end)
+    return ok and val or nil
 end
 
-local function toggleExecution()
-    isRunning = not isRunning
-    
-    -- Nếu dừng, đảm bảo nhả phím
-    if not isRunning then
-        sendKeyEvent(DEFAULT_KEY, false)
-        toggleBtn.Text = "START (F6)"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-        infoLabel.Text = "Stopped. Released " .. DEFAULT_KEY .. " key."
-    else
-        toggleBtn.Text = "STOP (F6)"
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-        infoLabel.Text = "Running... Searching for Bar."
+-- TÌM GUI ĐƠN GIẢN - TRÁNH MEMORY LEAK
+local function simpleFindGUI()
+    local pg = LocalPlayer:FindFirstChild("PlayerGui")
+    if not pg then return nil end
+    for _, obj in ipairs(pg:GetDescendants()) do
+        if obj:IsA("GuiObject") and (obj.Name:lower():find("bar") or obj.Name:lower():find("cooldown")) then
+            return obj
+        end
     end
-    updateUI(0)
+    return nil
 end
 
-toggleBtn.MouseButton1Click:Connect(toggleExecution)
+local function updateUI()
+    status.Text = string.format("%s | Hold: %ds | Presses: %d",
+        isRunning and "🟢 ON" or "🔴 OFF",
+        HOLD_DURATION,
+        pressCount
+    )
+    -- Cập nhật trạng thái phím Q
+    qToggleBtn.Text = string.format("🔘 Also Hold Q: %s", useQKey and "ON" or "OFF")
+    qToggleBtn.BackgroundColor3 = useQKey and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(80, 80, 80)
+end
 
-modeBtn.MouseButton1Click:Connect(function()
-    inputMode = inputMode % 3 + 1
-    updateUI(0)
-    infoLabel.Text = "Input Mode changed. Try START/STOP again."
+-- VÒNG LẶP CHÍNH
+local mainLoopActive = true
+
+task.spawn(function()
+    while mainLoopActive do
+        if isRunning then
+            -- Tìm GUI target (cooldown bar)
+            local targetGUI = nil
+            if pathBox.Text ~= "" and pathBox.Text ~= "Auto-detecting GUI..." then
+                local parts = {}
+                for part in pathBox.Text:gmatch("[^%.]+") do
+                    table.insert(parts, part)
+                end
+                local current = game
+                for _, part in ipairs(parts) do
+                    current = current:FindFirstChild(part)
+                    if not current then break end
+                end
+                targetGUI = current
+            end
+            if not targetGUI then
+                targetGUI = simpleFindGUI()
+                if targetGUI then
+                    pathBox.Text = targetGUI:GetFullName()
+                end
+            end
+
+            -- Chờ cooldown kết thúc
+            if targetGUI then
+                infoLabel.Text = "Đang chờ hết cooldown..."
+                local maxWait = 10
+                local startTime = tick()
+                local inCooldown = false
+                -- Xác định khi cooldown bắt đầu (có thay đổi lớn)
+                local lastVal = simpleReadGUI(targetGUI)
+                while tick() - startTime < maxWait do
+                    local curVal = simpleReadGUI(targetGUI)
+                    if curVal and lastVal and math.abs(curVal - lastVal) > 0.1 then
+                        inCooldown = true
+                        break
+                    end
+                    task.wait(0.05)
+                end
+                -- Đợi cho tới khi cooldown kết thúc (bar đầy hoặc hết)
+                if inCooldown then
+                    local cooldownStart = tick()
+                    while tick() - cooldownStart < maxWait do
+                        local checkVal = simpleReadGUI(targetGUI)
+                        if checkVal and (checkVal <= 0.05 or checkVal >= 0.95) then
+                            break -- cooldown xong
+                        end
+                        task.wait(0.05)
+                    end
+                end
+            else
+                infoLabel.Text = "Không tìm thấy GUI cooldown, sẽ giữ phím mỗi 10s."
+                task.wait(1)
+            end
+
+            -- Giữ phím
+            infoLabel.Text = string.format("Đang giữ phím %s%s...", DEFAULT_KEY, useQKey and (" + " .. SECONDARY_KEY) or "")
+            pressCount = pressCount + 1
+            updateUI()
+
+            -- Giữ phím R (và Q nếu bật) đồng thời
+            local coList = {}
+            table.insert(coList, coroutine.create(function() holdKey(DEFAULT_KEY, HOLD_DURATION) end))
+            if useQKey then
+                table.insert(coList, coroutine.create(function() holdKey(SECONDARY_KEY, HOLD_DURATION) end))
+            end
+            for _, co in ipairs(coList) do coroutine.resume(co) end
+            task.wait(HOLD_DURATION + 0.2)
+            infoLabel.Text = "Đã giữ phím xong, chờ cooldown tiếp theo..."
+            updateUI()
+
+        else
+            task.wait(0.5)
+        end
+    end
 end)
 
+-- UI CONTROLS
+local function toggleExecution()
+    isRunning = not isRunning
+    if isRunning then
+        infoLabel.Text = "Đang chạy... Sẽ giữ phím 7s mỗi lần hết cooldown."
+    else
+        infoLabel.Text = "Đã dừng. Sẵn sàng chạy lại."
+    end
+    updateUI()
+end
+qToggleBtn.MouseButton1Click:Connect(function()
+    useQKey = not useQKey
+    updateUI()
+    infoLabel.Text = useQKey and "Giữ cả phím Q & R" or "Chỉ giữ phím R"
+end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == HOTKEY_TOGGLE then
@@ -233,80 +240,23 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+-- Auto-detect GUI khi start
 task.spawn(function()
-    local BarObject = findBarByPath(BAR_PATH)
-    
-    if not BarObject then
-        infoLabel.Text = "🚨 Bar NOT found! Check path: " .. BAR_PATH
-        return
-    end
-
-    infoLabel.Text = "✅ Bar found: " .. BarObject.Name .. ". Ready."
-
-    while mainLoopActive do
-        
-        if not isRunning then
-            task.wait(0.5)
-            goto continue_loop
-        end
-
-        local barValue = readBarValue(BarObject)
-        updateUI(barValue)
-
-        -- 1. CHỜ BAR ĐẦY (Sẵn sàng >= 95%)
-        infoLabel.Text = "1. Chờ Bar đầy (>= 0.95)..."
-        local waitStart = tick()
-        local maxWaitTime = 5 -- Cooldown không nên vượt quá 5s
-        
-        while barValue < 0.95 and (tick() - waitStart) < maxWaitTime do
-            task.wait(0.05)
-            barValue = readBarValue(BarObject)
-            updateUI(barValue)
-        end
-        
-        if barValue < 0.95 then
-             infoLabel.Text = "⚠️ Cooldown quá lâu (> 5s). Bỏ qua lần này."
-             sendKeyEvent(DEFAULT_KEY, false) -- Đảm bảo nhả phím nếu có lỡ nhấn
-             task.wait(0.5)
-             goto continue_loop
-        end
-
-        -- 2. NHẤN VÀ GIỮ PHÍM R
-        infoLabel.Text = "2. Nhấn và Giữ phím " .. DEFAULT_KEY .. "..."
-        sendKeyEvent(DEFAULT_KEY, true)
-        pressCount = pressCount + 1
-        
-        -- 3. CHỜ BAR GIẢM VỀ 0 (Thi triển xong)
-        local holdStart = tick()
-        local maxHoldTime = 2 -- Thời gian giữ phím (Cast Time) không nên quá 2s
-        
-        while barValue > 0.05 and (tick() - holdStart) < maxHoldTime do
-            task.wait(0.05)
-            barValue = readBarValue(BarObject)
-            updateUI(barValue)
-        end
-        
-        -- 4. NHẢ PHÍM R
-        infoLabel.Text = "4. Nhả phím " .. DEFAULT_KEY .. ". Chiêu đã thi triển."
-        sendKeyEvent(DEFAULT_KEY, false)
-        
-        -- 5. CHỜ COOLDOWN NGẮN (Đảm bảo game nhận diện hoàn tất)
-        task.wait(0.1) -- Một khoảng chờ nhỏ sau khi nhả phím để game xử lý
-        infoLabel.Text = string.format("5. Chờ Cooldown (Total Presses: %d).", pressCount)
-        
-        -- Chờ một khoảng thời gian nhỏ trước khi lặp lại, để tránh flood
-        task.wait(0.1) 
-
-        ::continue_loop::
+    task.wait(2)
+    local gui = simpleFindGUI()
+    if gui then
+        pathBox.Text = gui:GetFullName()
+        infoLabel.Text = "Auto-detected: " .. gui.Name
+    else
+        infoLabel.Text = "Không tìm thấy GUI cooldown tự động. Hãy nhập thủ công nếu cần."
     end
 end)
 
--- Cleanup
+-- Cleanup khi player leave
 LocalPlayer.AncestryChanged:Connect(function()
     mainLoopActive = false
-    sendKeyEvent(DEFAULT_KEY, false) -- Đảm bảo nhả phím khi script bị hủy
     pcall(function() screenGui:Destroy() end)
-    print("Auto-Casting XENO FIX V2 script cleaned up.")
 end)
 
-print("Auto-Casting XENO FIX V2 loaded. Please try different Input Modes if the key press isn't working.")
+print("AutoHaki HOLD KEY v1.0 loaded!")
+print("Hold key sau cooldown: ĐÃ HOẠT ĐỘNG")
