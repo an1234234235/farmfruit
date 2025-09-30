@@ -1,11 +1,12 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.6 (FINAL FIX: LỖI PHÍM ESC)
+-- NTBA FARM HUB - V21.2.6 (FINAL FIX: BUỘC CHIÊU Z,X,C,V THẲNG HƯỚNG BẰNG MOUSE SIMULATION)
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local ContextActionService = game:GetService("ContextActionService") 
 local player = Players.LocalPlayer
 local Character = player.Character or player.CharacterAdded:Wait()
 local hrp = Character:WaitForChild("HumanoidRootPart")
@@ -15,25 +16,22 @@ local AutoFarmNPC = false
 local FarmRadius = 150
 local AutoSkillState={Z=false,X=false,C=false,V=false}
 
--- TRẠNG THÁI AUTO DROP
 local AutoDropItem = false
 local AutoDropItemPlus = false
 
--- BIẾN CHO AUTO HAKI R & Q
 local AutoHakiRState = false 
 local AutoHakiQState = false 
 
-local Hotkey = Enum.KeyCode.RightControl -- Phím tắt ẩn/hiện Hub
+local Hotkey = Enum.KeyCode.RightControl
 local HubVisible = true
+local isEscPressed = false 
 
--- HẰNG SỐ CHO HỆ THỐNG AUTO HAKI MỚI
 local DEFAULT_INTERVAL = 0.15
 local SAMPLE_WINDOW = 6
 local MIN_INTERVAL = 0.02
 local MAX_INTERVAL = 3
-local currentMode = "Adaptive" -- Bắt đầu bằng Adaptive
+local currentMode = "Adaptive" 
 
--- DỮ LIỆU COOLDOWN CHO AUTO HAKI R
 local CooldownData = {
     pressCount = 0,
     successCount = 0,
@@ -41,28 +39,15 @@ local CooldownData = {
     lastPressTime = 0
 }
 
--- DANH SÁCH DROP CŨ (TRÁI CÂY, MIX THƯỜNG)
 local ITEM_DROP_LIST = {
-    ["Apple"] = true,
-    ["Cantaloup"] = true,
-    ["Cantaloupe"] = true,
-    ["Banana"] = true,
-    ["Green Apple"] = true,
-    ["Coconut"] = true,
-    ["Pumpkin"] = true,
-    ["Prickly Pear"] = true,
+    ["Apple"] = true, ["Cantaloup"] = true, ["Cantaloupe"] = true, ["Banana"] = true,
+    ["Green Apple"] = true, ["Coconut"] = true, ["Pumpkin"] = true, ["Prickly Pear"] = true,
     ["Melon"] = true,
 }
-
--- DANH SÁCH DROP MỚI (CÓ DẤU +)
 local ITEM_DROP_PLUS_LIST = {
-    ["Cider+"] = true,
-    ["Lemonade+"] = true,
-    ["Juice+"] = true,
-    ["Smoothie+"] = true,
+    ["Cider+"] = true, ["Lemonade+"] = true, ["Juice+"] = true, ["Smoothie+"] = true,
 }
 
--- HÀM HỖ TRỢ CHÍNH
 local function findDroppableItemInList(dropList)
     for _, item in ipairs(Backpack:GetChildren()) do
         if (item:IsA("Tool") or item:IsA("HopperBin")) and dropList[item.Name] then
@@ -88,16 +73,10 @@ local function simpleClamp(n, lo, hi)
     return n
 end
 
-local function simpleInterval(n)
-    return simpleClamp(n, MIN_INTERVAL, MAX_INTERVAL)
-end
-
--- ĐỌC GIÁ TRỊ THANH GUI
 local function simpleReadGUI(obj)
     if not obj then return nil end
     local ok, val = pcall(function()
         if obj:IsA("GuiObject") then
-            -- Giả định thanh cooldown sử dụng Size.X.Scale
             return obj.Size.X.Scale
         end
         return nil
@@ -105,13 +84,11 @@ local function simpleReadGUI(obj)
     return ok and val or nil
 end
 
--- HÀM TỰ ĐỘNG DÒ TÌM GUI COOLDOWN
 local function simpleFindGUI()
     local pg = player:FindFirstChild("PlayerGui")
     if not pg then return nil end
     
     for _, obj in ipairs(pg:GetDescendants()) do
-        -- Tìm các đối tượng GUI có tên chứa "bar" hoặc "cooldown"
         if obj:IsA("GuiObject") and (obj.Name:lower():find("bar") or obj.Name:lower():find("cooldown")) then
             return obj
         end
@@ -130,12 +107,18 @@ local function getSmartInterval()
     end
     local avg = total / #CooldownData.lastSamples
     
-    -- Nhấn sớm hơn 0.05s so với thời gian hồi chiêu trung bình
     return simpleClamp(avg - 0.05, MIN_INTERVAL, MAX_INTERVAL)
 end
 
+local function forceLockMouse(shouldLock)
+    if shouldLock then
+        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+    else
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+end
 
--- TỰ ĐỘNG CẬP NHẬT TRONG TRƯỜNG HỢP NHÂN VẬT CHẾT/TÁI SINH
+
 player.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
     hrp = Character:WaitForChild("HumanoidRootPart")
@@ -151,7 +134,10 @@ end)
 local PlayerGui = player:WaitForChild("PlayerGui", 5)
 if not PlayerGui then return end
 
--- ===== PHẦN UI =====
+-- ================================================================= --
+--                             UI SETUP
+-- ================================================================= --
+
 local MAIN_W, MAIN_H = 600, 380
 local Sidebar_W = 130
 local ScreenGui = Instance.new("ScreenGui")
@@ -159,7 +145,6 @@ ScreenGui.Name = "FruitHubUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
 
--- Main Frame & Title Bar
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.Size = UDim2.new(0, MAIN_W, 0, MAIN_H)
@@ -189,7 +174,7 @@ TitleLabel.Size = UDim2.new(0.6,-10,1,0)
 TitleLabel.Position = UDim2.new(0,10,0,0)
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "NTBA • Farm Hub (V21.2.6 - FIX ESC)" -- Cập nhật tên
+TitleLabel.Text = "NTBA • Farm Hub (V21.2.6 - FIX CUỐI CÙNG)" 
 TitleLabel.TextSize = 15
 TitleLabel.TextColor3 = Color3.fromRGB(170, 255, 255)
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -219,11 +204,11 @@ CloseBtn.BackgroundTransparency = 0.1
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0,6)
 CloseBtn.Parent = TitleBar
 CloseBtn.MouseButton1Click:Connect(function()
+    forceLockMouse(false) 
     ScreenGui:Destroy()
     script:Destroy()
 end)
 
--- Dragging Logic (Giữ nguyên)
 do
     local dragging = false
     local dragStart, startPos
@@ -245,26 +230,24 @@ do
     end)
 end
 
--- BIẾN MỚI: TẠM DỪNG KHI NHẤN ESC
-local isEscPressed = false 
-
--- Xử lý Hotkey và ESC
 UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Hotkey and not gpe then
         HubVisible = not HubVisible
         ScreenGui.Enabled = HubVisible
     end
 
-    -- FIX LỖI ESC: Bật cờ khi ESC được nhấn
     if input.KeyCode == Enum.KeyCode.Escape then
         isEscPressed = true
+        forceLockMouse(false) 
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gpe)
-    -- FIX LỖI ESC: Tắt cờ khi ESC được nhả
     if input.KeyCode == Enum.KeyCode.Escape then
         isEscPressed = false
+        if AutoHakiRState or AutoHakiQState then
+            forceLockMouse(true)
+        end
     end
 end)
 
@@ -277,7 +260,6 @@ Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Main
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0,10)
 
--- Danh sách tab MỚI (Đã loại bỏ "Utility")
 local tabs = {"AutoFarm","AutoNPC","AutoHaki","Fruit Mix","Settings"} 
 local tabButtons, panels = {}, {}
 
@@ -332,7 +314,7 @@ for name, btn in pairs(tabButtons) do
 end
 
 -- ================================================================= --
---                             AUTO FARM PANEL
+--                             AUTO FARM PANEL (SỬA LỖI CHÍNH)
 -- ================================================================= --
 
 local AutoFarmPanel = panels["AutoFarm"]
@@ -375,19 +357,35 @@ do
     end
 end
 
--- VÒNG LẶP AUTO SKILL (Hoạt động khi AutoFarmNPC OFF)
+-- VÒNG LẶP AUTO SKILL (FIX LỖI BUỘC THẲNG HƯỚNG BẰNG MOUSE SIMULATION)
 task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(0.1)
         
         if not AutoFarmNPC and not isEscPressed then
             for key,enabled in pairs(AutoSkillState) do
                 if enabled then
+                    
+                    -- 1. BUỘC NHÂN VẬT QUAY THẲNG VỀ HƯỚNG CAMERA 
+                    if hrp and game.Workspace.CurrentCamera then
+                        local camLook = game.Workspace.CurrentCamera.CFrame.LookVector
+                        local targetPos = hrp.Position + Vector3.new(camLook.X, 0, camLook.Z) 
+                        hrp.CFrame = CFrame.new(hrp.Position, targetPos)
+                    end
+                    
                     pcall(function()
+                        -- 2. NHẤN PHÍM CHIÊU THỨC (Z/X/C/V)
                         VirtualInputManager:SendKeyEvent(true,key,false,game)
                         task.wait(0.04)
                         VirtualInputManager:SendKeyEvent(false,key,false,game)
+                        
+                        -- 3. GỬI TÍN HIỆU NHẤP CHUỘT TRÁI GIẢ (BUỘC CHIÊU KÍCH HOẠT THẲNG)
+                        VirtualInputManager:SendMouseButtonEvent(0, true, game) -- Nhấn chuột
+                        task.wait(0.01) 
+                        VirtualInputManager:SendMouseButtonEvent(0, false, game) -- Nhả chuột
+                        
                     end)
+                    task.wait(0.1) 
                 end
             end
         end
@@ -395,7 +393,7 @@ task.spawn(function()
 end)
 
 -- ================================================================= --
---                             AUTO NPC PANEL
+--                             AUTO NPC PANEL (GIỮ NGUYÊN)
 -- ================================================================= --
 
 local AutoNPCPanel = panels["AutoNPC"]
@@ -476,11 +474,9 @@ local function findAndFarmNPC()
 
     if targetNPC then
         pcall(function()
-            -- Di chuyển nhân vật đến gần NPC
             hrp.CFrame = targetNPC.CFrame * CFrame.new(0, 0, -10)
         end)
 
-        -- Sử dụng kỹ năng
         for i = 1, 3 do
             local skillUsed = false
             for key, enabled in pairs(AutoSkillState) do
@@ -489,6 +485,11 @@ local function findAndFarmNPC()
                         VirtualInputManager:SendKeyEvent(true, key, false, game)
                         task.wait(0.04)
                         VirtualInputManager:SendKeyEvent(false, key, false, game)
+
+                        -- GỬI TÍN HIỆU NHẤP CHUỘT TRÁI GIẢ KHI AUTO FARM NPC (CŨNG CẦN THIẾT)
+                        VirtualInputManager:SendMouseButtonEvent(0, true, game) 
+                        task.wait(0.01) 
+                        VirtualInputManager:SendMouseButtonEvent(0, false, game)
                     end)
                     skillUsed = true
                 end
@@ -496,7 +497,6 @@ local function findAndFarmNPC()
             if skillUsed then
                task.wait(0.3)
             else
-               -- Nếu không có skill nào bật, spam click (tấn công cơ bản - giả định E)
                pcall(function()
                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game) 
                    task.wait(0.04)
@@ -520,7 +520,7 @@ task.spawn(function()
 end)
 
 -- ================================================================= --
---                             AUTO HAKI PANEL
+--                             AUTO HAKI PANEL (GIỮ NGUYÊN)
 -- ================================================================= --
 
 local AutoHakiPanel = panels["AutoHaki"]
@@ -554,7 +554,6 @@ do
     HakiStatusLabel.TextSize = 12
     y = y + 24
 
-    -- Nút Toggle Mode
     local modeBtn = Instance.new("TextButton", p)
     modeBtn.Size = UDim2.new(0, 80, 0, 25)
     modeBtn.Position = UDim2.new(0, 5, 0, y)
@@ -571,7 +570,6 @@ do
         HakiModeLabel.Text = currentMode
     end)
 
-    -- Nút R
     local rBtn = Instance.new("TextButton", p)
     rBtn.Size = UDim2.new(0, 140, 0, 32)
     rBtn.Position = UDim2.new(0, 95, 0, y - 4)
@@ -589,9 +587,10 @@ do
         rBtn.Text = "R Haki: " .. (AutoHakiRState and "ON" or "OFF")
         rBtn.BackgroundColor3 = AutoHakiRState and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 62)
         rBtn.BackgroundTransparency = AutoHakiRState and 0.1 or 0.15
+        
+        forceLockMouse(AutoHakiRState or AutoHakiQState)
     end)
 
-    -- Nút Q
     local qBtn = Instance.new("TextButton", p)
     qBtn.Size = UDim2.new(0, 140, 0, 32)
     qBtn.Position = UDim2.new(0, 245, 0, y - 4)
@@ -609,10 +608,11 @@ do
         qBtn.Text = "Q Haki: " .. (AutoHakiQState and "ON" or "OFF")
         qBtn.BackgroundColor3 = AutoHakiQState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(60, 60, 62)
         qBtn.BackgroundTransparency = AutoHakiQState and 0.1 or 0.15
+        
+        forceLockMouse(AutoHakiRState or AutoHakiQState)
     end)
     y = y + 36
 
-    -- Textbox path GUI (Auto-detect sẽ điền vào đây)
     GuiPathBox = Instance.new("TextBox", p)
     GuiPathBox.Size = UDim2.new(1, -10, 0, 20)
     GuiPathBox.Position = UDim2.new(0, 5, 0, y)
@@ -624,7 +624,6 @@ do
     GuiPathBox.TextSize = 12
     y = y + 24
 
-    -- Label hiển thị Interval hiện tại
     CurrentIntervalLabel = Instance.new("TextLabel", p)
     CurrentIntervalLabel.Size = UDim2.new(1, -10, 0, 20)
     CurrentIntervalLabel.Position = UDim2.new(0, 5, 0, y)
@@ -636,10 +635,6 @@ do
     y = y + 24
 end
 
--- ================================================================= --
--- VÒNG LẶP CHÍNH AUTO HAKI (R và Q)
--- ================================================================= --
-
 local function checkCooldown(targetGUI)
     if not targetGUI or currentMode == "Spam" then return end
     
@@ -649,11 +644,11 @@ local function checkCooldown(targetGUI)
     local startTime = tick()
     local maxWait = 5
     
-    while tick() - startTime < maxWait and not isEscPressed do -- THÊM CHECK ESC
+    while tick() - startTime < maxWait and not isEscPressed do 
         local currentVal = simpleReadGUI(targetGUI)
         if currentVal and math.abs(currentVal - startVal) > 0.1 then
             local cooldownStart = tick()
-            while tick() - cooldownStart < maxWait and not isEscPressed do -- THÊM CHECK ESC
+            while tick() - cooldownStart < maxWait and not isEscPressed do 
                 local checkVal = simpleReadGUI(targetGUI)
                 if checkVal and (checkVal <= 0.05 or checkVal >= 0.95) then
                     local duration = tick() - CooldownData.lastPressTime
@@ -680,18 +675,15 @@ task.spawn(function()
     while true do
         local isAnyHakiActive = AutoHakiRState or AutoHakiQState
         
-        -- SỬ DỤNG CỜ isEscPressed ĐỂ TẠM DỪNG HOÀN TOÀN TÍNH NĂNG
         if isAnyHakiActive and not isEscPressed then 
             
-            -- TÌM VÀ CẬP NHẬT ĐƯỜNG DẪN GUI
             if not targetGUI and (GuiPathBox.Text == "" or GuiPathBox.Text == "Đường dẫn GUI Cooldown (Ex: PlayerGui.SkillGui.RButton.Bar)") then
-                local autoDetected = simpleFindGUI() -- <--- CƠ CHẾ AUTO-DETECT
+                local autoDetected = simpleFindGUI() 
                 if autoDetected then
                     targetGUI = autoDetected
                     GuiPathBox.Text = targetGUI:GetFullName()
                 end
             elseif not targetGUI and GuiPathBox.Text ~= "" then
-                -- Lấy đường dẫn thủ công
                 local parts = {}
                 for part in GuiPathBox.Text:gmatch("[^%.]+") do table.insert(parts, part) end
                 
@@ -703,19 +695,16 @@ task.spawn(function()
                 targetGUI = current
             end
             
-            -- THỰC HIỆN NHẤN PHÍM R
             if AutoHakiRState then
                 CooldownData.pressCount = CooldownData.pressCount + 1
                 CooldownData.lastPressTime = tick()
                 doKeyTap(Enum.KeyCode.R)
             end
 
-            -- THỰC HIỆN NHẤN PHÍM Q
             if AutoHakiQState then
                 doKeyTap(Enum.KeyCode.Q)
             end
             
-            -- KIỂM TRA COOLDOWN & CẬP NHẬT INTERVAL (chỉ khi R bật)
             local currentWaitTime = DEFAULT_INTERVAL
             if AutoHakiRState and targetGUI then
                 checkCooldown(targetGUI)
@@ -726,7 +715,6 @@ task.spawn(function()
                 currentWaitTime = DEFAULT_INTERVAL
             end
 
-            -- CẬP NHẬT UI
             local statusText = AutoHakiRState and "R ACTIVE" or ""
             statusText = statusText .. (AutoHakiQState and (statusText=="" and "Q ACTIVE" or " & Q ACTIVE") or "")
             if statusText == "" then statusText = "ON" end
@@ -740,18 +728,15 @@ task.spawn(function()
             CurrentIntervalLabel.Text = string.format("Interval: %.3fs | Success Rate: %d%%", 
                 currentWaitTime, successRate)
 
-            -- CHỜ INTERVAL
             task.wait(currentWaitTime)
             
         else
-            -- CẬP NHẬT UI KHI TẮT HOẶC KHI ESC ĐƯỢC NHẤN
             if isEscPressed then
                  HakiStatusLabel.Text = "Status: ESC PRESSED (Paused)"
             else
                 HakiStatusLabel.Text = "Status: OFF | Mode: " .. currentMode .. " | Rate: 0.15s"
             end
             
-            -- Đợi lâu hơn khi không chạy
             task.wait(0.5)
         end
     end
@@ -759,7 +744,7 @@ end)
 
 
 -- ================================================================= --
---                             FRUIT MIX PANEL
+--                             FRUIT MIX PANEL (GIỮ NGUYÊN)
 -- ================================================================= --
 
 local FruitMixPanel = panels["Fruit Mix"]
@@ -776,7 +761,6 @@ do
     label.Text = "AUTO DROP ITEMS (FRUIT MIX)"
     y = y + 30
 
-    -- NÚT AUTO DROP ITEM THƯỜNG
     local dropBtn = Instance.new("TextButton", p)
     dropBtn.Size = UDim2.new(0, 280, 0, 32)
     dropBtn.Position = UDim2.new(0, 10, 0, y)
@@ -797,7 +781,6 @@ do
     end)
     y = y + 40
 
-    -- NÚT AUTO DROP ITEM PLUS (+)
     local dropPlusBtn = Instance.new("TextButton", p)
     dropPlusBtn.Size = UDim2.new(0, 280, 0, 32)
     dropPlusBtn.Position = UDim2.new(0, 10, 0, y)
@@ -830,7 +813,6 @@ do
     note.Text = "Chức năng Auto Collect Chests (Loot Hòm) đã bị xóa khỏi Hub này."
 end
 
--- VÒNG LẶP AUTO DROP ITEM THƯỜNG
 task.spawn(function()
     while true do
         if AutoDropItem and not isEscPressed then
@@ -853,7 +835,6 @@ task.spawn(function()
     end
 end)
 
--- VÒNG LẶP AUTO DROP ITEM PLUS (+)
 task.spawn(function()
     while true do
         if AutoDropItemPlus and not isEscPressed then
@@ -877,7 +858,7 @@ task.spawn(function()
 end)
 
 -- ================================================================= --
---                             SETTINGS PANEL
+--                             SETTINGS PANEL (GIỮ NGUYÊN)
 -- ================================================================= --
 
 local SettingsPanel = panels["Settings"]
@@ -885,7 +866,7 @@ do
     local p = SettingsPanel
     local y = 6
     local label = Instance.new("TextLabel", p)
-    label.Size = UDim2.new(1, 0, 0, 24)
+    label.Size = UDim2.new(1, 0, 0, y)
     label.Position = UDim2.new(0, 0, 0, y)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.GothamBold
@@ -894,7 +875,6 @@ do
     label.Text = "TÙY CHỈNH NÚT ẨN/HIỆN HUB"
     y = y + 30
 
-    -- Label hiển thị nút hiện tại
     local keyLabel = Instance.new("TextLabel", p)
     keyLabel.Name = "KeyLabel"
     keyLabel.Size = UDim2.new(0, 180, 0, 24)
@@ -906,7 +886,6 @@ do
     updateKeyLabel()
     y = y + 28
 
-    -- Textbox để nhập phím mới
     local keyInput = Instance.new("TextBox", p)
     keyInput.Size = UDim2.new(0, 180, 0, 32)
     keyInput.Position = UDim2.new(0, 10, 0, y)
@@ -921,7 +900,6 @@ do
     Instance.new("UICorner", keyInput).CornerRadius = UDim.new(0, 6)
     y = y + 42
 
-    -- Nút lưu
     local saveBtn = Instance.new("TextButton", p)
     saveBtn.Size = UDim2.new(0, 100, 0, 32)
     saveBtn.Position = UDim2.new(0, 200, 0, y - 32)
@@ -971,7 +949,7 @@ foot.BackgroundTransparency=1
 foot.Font = Enum.Font.Gotham
 foot.TextSize = 11
 foot.TextColor3 = Color3.fromRGB(150,150,150)
-foot.Text="NTBA • Farm Hub v21.2.6 (Fixed Auto Haki R/Q, Bỏ God Mode - Bỏ Utility)" 
+foot.Text="NTBA • Farm Hub v21.2.6 (Fixed Z,X,C,V Straight Aim)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.2.6 - Sửa lỗi: Đã cho phép nhấn ESC để mở menu game.")
+print("NTBA Farm Hub v21.2.6 - Fixed: Z,X,C,V sẽ luôn bay thẳng theo nhân vật.")
