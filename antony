@@ -1,5 +1,5 @@
 -- ================================================================= --
--- NTBA FARM HUB - V21.2.6 (FINAL FIX: BUỘC CHIÊU Z,X,C,V THẲNG HƯỚNG BẰNG MOUSE SIMULATION)
+-- NTBA FARM HUB - V21.2.6 (FINAL FIX: CHIÊU THẲNG & BỎ LOCK CHUỘT HAKI)
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -110,18 +110,16 @@ local function getSmartInterval()
     return simpleClamp(avg - 0.05, MIN_INTERVAL, MAX_INTERVAL)
 end
 
+-- 🔥 ĐÃ BỎ LỆNH KHÓA CHUỘT (LUÔN TRẢ VỀ DEFAULT)
 local function forceLockMouse(shouldLock)
-    if shouldLock then
-        UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-    else
-        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-    end
+    -- Giữ nguyên chuột ở trạng thái mặc định (Default)
+    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 end
 
 
 player.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
-    hrp = Character:WaitForChild("HumanoidRootPart")
+    hrp = newCharacter:WaitForChild("HumanoidRootPart")
 end)
 
 
@@ -245,9 +243,7 @@ end)
 UserInputService.InputEnded:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode.Escape then
         isEscPressed = false
-        if AutoHakiRState or AutoHakiQState then
-            forceLockMouse(true)
-        end
+        -- KHÔNG CẦN GỌI forceLockMouse(true) VÌ HÀM ĐÃ BỊ VÔ HIỆU HÓA
     end
 end)
 
@@ -314,7 +310,7 @@ for name, btn in pairs(tabButtons) do
 end
 
 -- ================================================================= --
---                             AUTO FARM PANEL (SỬA LỖI CHÍNH)
+--                             AUTO FARM PANEL 
 -- ================================================================= --
 
 local AutoFarmPanel = panels["AutoFarm"]
@@ -357,7 +353,7 @@ do
     end
 end
 
--- VÒNG LẶP AUTO SKILL (FIX LỖI BUỘC THẲNG HƯỚNG BẰNG MOUSE SIMULATION)
+-- VÒNG LẶP AUTO SKILL (CHIÊU THẲNG - KHÔNG ẢNH HƯỞNG BỞI CHUỘT)
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -380,9 +376,9 @@ task.spawn(function()
                         VirtualInputManager:SendKeyEvent(false,key,false,game)
                         
                         -- 3. GỬI TÍN HIỆU NHẤP CHUỘT TRÁI GIẢ (BUỘC CHIÊU KÍCH HOẠT THẲNG)
-                        VirtualInputManager:SendMouseButtonEvent(0, true, game) -- Nhấn chuột
+                        VirtualInputManager:SendMouseButtonEvent(0, true, game) 
                         task.wait(0.01) 
-                        VirtualInputManager:SendMouseButtonEvent(0, false, game) -- Nhả chuột
+                        VirtualInputManager:SendMouseButtonEvent(0, false, game) 
                         
                     end)
                     task.wait(0.1) 
@@ -520,7 +516,7 @@ task.spawn(function()
 end)
 
 -- ================================================================= --
---                             AUTO HAKI PANEL (GIỮ NGUYÊN)
+--                             AUTO HAKI PANEL (BỎ LOCK CHUỘT)
 -- ================================================================= --
 
 local AutoHakiPanel = panels["AutoHaki"]
@@ -588,7 +584,8 @@ do
         rBtn.BackgroundColor3 = AutoHakiRState and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 62)
         rBtn.BackgroundTransparency = AutoHakiRState and 0.1 or 0.15
         
-        forceLockMouse(AutoHakiRState or AutoHakiQState)
+        -- 🔥 BỎ LOCK CHUỘT
+        -- forceLockMouse(AutoHakiRState or AutoHakiQState)
     end)
 
     local qBtn = Instance.new("TextButton", p)
@@ -609,7 +606,8 @@ do
         qBtn.BackgroundColor3 = AutoHakiQState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(60, 60, 62)
         qBtn.BackgroundTransparency = AutoHakiQState and 0.1 or 0.15
         
-        forceLockMouse(AutoHakiRState or AutoHakiQState)
+        -- 🔥 BỎ LOCK CHUỘT
+        -- forceLockMouse(AutoHakiRState or AutoHakiQState)
     end)
     y = y + 36
 
@@ -952,4 +950,4 @@ foot.TextColor3 = Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Farm Hub v21.2.6 (Fixed Z,X,C,V Straight Aim)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.2.6 - Fixed: Z,X,C,V sẽ luôn bay thẳng theo nhân vật.")
+print("NTBA Farm Hub v21.2.6 - Fixed: Bỏ Lock Chuột Haki và Z,X,C,V bay thẳng.")
