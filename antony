@@ -1,5 +1,6 @@
 -- ================================================================= --
 -- NTBA FARM HUB - V21.2.6 (FINAL FIX: CHIÊU THẲNG & BỎ LOCK CHUỘT HAKI)
+-- ĐÃ THÊM: NÚT FLOATING CHO MOBILE (NÚT HOME ẢO) & NÚT ON/OFF AUTO HAKI
 -- ================================================================= --
 
 local RunService = game:GetService("RunService")
@@ -116,12 +117,10 @@ local function forceLockMouse(shouldLock)
     UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 end
 
-
 player.CharacterAdded:Connect(function(newCharacter)
     Character = newCharacter
     hrp = newCharacter:WaitForChild("HumanoidRootPart")
 end)
-
 
 pcall(function()
     if player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FruitHubUI") then
@@ -142,6 +141,50 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "FruitHubUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = PlayerGui
+
+-- ================================================================= --
+--                        FLOATING BUTTON (MOBILE)
+-- ================================================================= --
+
+local floatingBtn = Instance.new("ImageButton")
+floatingBtn.Name = "FloatingToggleBtn"
+floatingBtn.Size = UDim2.new(0, 48, 0, 48)
+floatingBtn.Position = UDim2.new(1, -60, 1, -60) -- Góc phải dưới
+floatingBtn.BackgroundColor3 = Color3.fromRGB(36, 36, 38)
+floatingBtn.BackgroundTransparency = 0.15
+floatingBtn.Image = "rbxassetid://3926305904" -- icon system menu (có thể thay icon khác)
+floatingBtn.ImageRectOffset = Vector2.new(964, 324)
+floatingBtn.ImageRectSize = Vector2.new(36, 36)
+floatingBtn.Visible = UserInputService.TouchEnabled -- chỉ hiện trên mobile
+floatingBtn.ZIndex = 20
+Instance.new("UICorner", floatingBtn).CornerRadius = UDim.new(1, 100)
+floatingBtn.Parent = ScreenGui
+
+-- Nút kéo được
+local dragging = false
+local dragStart, startPos
+floatingBtn.InputBegan:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.Touch then
+        dragging=true
+        dragStart=input.Position
+        startPos=floatingBtn.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType==Enum.UserInputType.Touch then
+        local delta=input.Position-dragStart
+        floatingBtn.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+delta.X, startPos.Y.Scale, startPos.Y.Offset+delta.Y)
+    end
+end)
+floatingBtn.InputEnded:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.Touch then
+        dragging=false
+    end
+end)
+floatingBtn.MouseButton1Click:Connect(function()
+    HubVisible = not HubVisible
+    ScreenGui.Enabled = HubVisible
+end)
 
 local Main = Instance.new("Frame")
 Main.Name = "Main"
@@ -232,6 +275,9 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Hotkey and not gpe then
         HubVisible = not HubVisible
         ScreenGui.Enabled = HubVisible
+        if floatingBtn then
+            floatingBtn.Visible = UserInputService.TouchEnabled
+        end
     end
 
     if input.KeyCode == Enum.KeyCode.Escape then
@@ -516,7 +562,7 @@ task.spawn(function()
 end)
 
 -- ================================================================= --
---                             AUTO HAKI PANEL (HOLD KEY STYLE)
+--                             AUTO HAKI PANEL (HOLD KEY STYLE) + NÚT ON/OFF
 -- ================================================================= --
 
 local AutoHakiPanel = panels["AutoHaki"]
@@ -545,6 +591,32 @@ do
     label.TextColor3 = Color3.fromRGB(0, 170, 255)
     label.Text = "AUTO HAKI (HOLD R/Q thông minh)"
     y = y + 30
+
+    -- NÚT ON/OFF AUTO HAKI
+    local hakiToggleBtn = Instance.new("TextButton", p)
+    hakiToggleBtn.Size = UDim2.new(0, 160, 0, 28)
+    hakiToggleBtn.Position = UDim2.new(0, 5, 0, y)
+    hakiToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    hakiToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    hakiToggleBtn.Text = "Auto Haki: OFF"
+    hakiToggleBtn.Font = Enum.Font.GothamBold
+    hakiToggleBtn.TextSize = 13
+    hakiToggleBtn.BorderSizePixel = 0
+    Instance.new("UICorner", hakiToggleBtn).CornerRadius = UDim.new(0, 6)
+    hakiToggleBtn.Parent = p
+    y = y + 32
+
+    hakiToggleBtn.MouseButton1Click:Connect(function()
+        isHoldingHaki = not isHoldingHaki
+        hakiToggleBtn.Text = "Auto Haki: " .. (isHoldingHaki and "ON" or "OFF")
+        hakiToggleBtn.BackgroundColor3 = isHoldingHaki and Color3.fromRGB(0,200,80) or Color3.fromRGB(0,120,255)
+        if isHoldingHaki then
+            HakiInfoLabel.Text = "Đang chạy... Sẽ giữ phím 7s mỗi lần hết cooldown."
+        else
+            HakiInfoLabel.Text = "Đã dừng. Sẵn sàng chạy lại."
+        end
+        updateHakiUI()
+    end)
 
     HakiStatusLabel = Instance.new("TextLabel", p)
     HakiStatusLabel.Size = UDim2.new(1, -10, 0, 20)
@@ -592,6 +664,7 @@ do
 end
 
 local function updateHakiUI()
+    if not HakiStatusLabel or not HakiHoldQBtn then return end
     HakiStatusLabel.Text = string.format("%s | Hold: %ds | Presses: %d",
         isHoldingHaki and "🟢 ON" or "🔴 OFF",
         HOLD_DURATION,
@@ -604,22 +677,12 @@ end
 HakiHoldQBtn.MouseButton1Click:Connect(function()
     useQKey = not useQKey
     updateHakiUI()
-    HakiInfoLabel.Text = useQKey and "Giữ cả phím Q & R" or "Chỉ giữ phím R"
-end)
-
-local HOTKEY_TOGGLE = Enum.KeyCode.F6
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == HOTKEY_TOGGLE then
-        isHoldingHaki = not isHoldingHaki
-        if isHoldingHaki then
-            HakiInfoLabel.Text = "Đang chạy... Sẽ giữ phím 7s mỗi lần hết cooldown."
-        else
-            HakiInfoLabel.Text = "Đã dừng. Sẵn sàng chạy lại."
-        end
-        updateHakiUI()
+    if HakiInfoLabel then
+        HakiInfoLabel.Text = useQKey and "Giữ cả phím Q & R" or "Chỉ giữ phím R"
     end
 end)
+
+-- XÓA BỎ PHÍM F6 ĐỂ BẬT/TẮT HAKI (KHÔNG CẦN NỮA)
 
 -- ĐỌC GUI VALUE ĐƠN GIẢN
 local function simpleReadGUI_Haki(obj)
@@ -961,4 +1024,4 @@ foot.TextColor3 = Color3.fromRGB(150,150,150)
 foot.Text="NTBA • Farm Hub v21.2.6 (Fixed Z,X,C,V Straight Aim)" 
 foot.Parent=Main
 
-print("NTBA Farm Hub v21.2.6 - Fixed: Bỏ Lock Chuột Haki và Z,X,C,V bay thẳng.")
+print("NTBA Farm Hub v21.2.6 - Fixed: Bỏ Lock Chuột Haki và Z,X,C,V bay thẳng. ĐÃ THÊM FLOATING BUTTON & AUTO HAKI BUTTON")
