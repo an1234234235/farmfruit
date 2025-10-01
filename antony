@@ -527,7 +527,7 @@ local HakiInfoLabel = nil
 
 local DEFAULT_KEY = "R"
 local SECONDARY_KEY = "Q"
-local HOLD_DURATION = 7
+local HOLD_DURATION = 10
 local isHoldingHaki = false
 local useQKey = false
 local pressCount = 0
