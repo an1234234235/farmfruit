@@ -1,6 +1,6 @@
 local DEFAULT_KEY = "R"
 local SECONDARY_KEY = "Q"  -- Thêm phím Q
-local HOLD_DURATION = 7    -- Giữ phím bao lâu (giây)
+local HOLD_DURATION = 10    -- Giữ phím bao lâu (giây)
 local HOTKEY_TOGGLE = Enum.KeyCode.F6
 local GUI_NAME = "AutoHakiHoldKey_v1"
 local MIN_INTERVAL = 0.02
