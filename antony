@@ -516,14 +516,21 @@ task.spawn(function()
 end)
 
 -- ================================================================= --
---                             AUTO HAKI PANEL (BỎ LOCK CHUỘT)
+--                             AUTO HAKI PANEL (HOLD KEY STYLE)
 -- ================================================================= --
 
 local AutoHakiPanel = panels["AutoHaki"]
 local HakiStatusLabel = nil
-local HakiModeLabel = nil
+local HakiHoldQBtn = nil
 local GuiPathBox = nil
-local CurrentIntervalLabel = nil
+local HakiInfoLabel = nil
+
+local DEFAULT_KEY = "R"
+local SECONDARY_KEY = "Q"
+local HOLD_DURATION = 7
+local isHoldingHaki = false
+local useQKey = false
+local pressCount = 0
 
 do
     local p = AutoHakiPanel
@@ -536,155 +543,132 @@ do
     label.Font = Enum.Font.GothamBold
     label.TextSize = 14
     label.TextColor3 = Color3.fromRGB(0, 170, 255)
-    label.Text = "AUTO HAKI R/Q (ADAPTIVE & SPAM)"
+    label.Text = "AUTO HAKI (HOLD R/Q thông minh)"
     y = y + 30
 
     HakiStatusLabel = Instance.new("TextLabel", p)
     HakiStatusLabel.Size = UDim2.new(1, -10, 0, 20)
     HakiStatusLabel.Position = UDim2.new(0, 5, 0, y)
     HakiStatusLabel.BackgroundTransparency = 1
-    HakiStatusLabel.Text = "Status: OFF | Mode: Adaptive | Rate: 0.15s"
+    HakiStatusLabel.Text = "🔴 OFF | Hold: 7s | Presses: 0"
     HakiStatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     HakiStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
     HakiStatusLabel.Font = Enum.Font.SourceSans
-    HakiStatusLabel.TextSize = 12
+    HakiStatusLabel.TextSize = 14
     y = y + 24
 
-    local modeBtn = Instance.new("TextButton", p)
-    modeBtn.Size = UDim2.new(0, 80, 0, 25)
-    modeBtn.Position = UDim2.new(0, 5, 0, y)
-    modeBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 120)
-    modeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    modeBtn.Text = "Adaptive"
-    modeBtn.Font = Enum.Font.SourceSans
-    modeBtn.TextSize = 14
-    Instance.new("UICorner", modeBtn).CornerRadius = UDim.new(0, 6)
-    HakiModeLabel = modeBtn 
-
-    modeBtn.MouseButton1Click:Connect(function()
-        currentMode = (currentMode == "Adaptive") and "Spam" or "Adaptive"
-        HakiModeLabel.Text = currentMode
-    end)
-
-    local rBtn = Instance.new("TextButton", p)
-    rBtn.Size = UDim2.new(0, 140, 0, 32)
-    rBtn.Position = UDim2.new(0, 95, 0, y - 4)
-    rBtn.Text = "R Haki: OFF"
-    rBtn.Font = Enum.Font.GothamBold
-    rBtn.TextSize = 14
-    rBtn.TextColor3 = Color3.fromRGB(230, 230, 230)
-    rBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 62)
-    rBtn.BackgroundTransparency = 0.15
-    rBtn.BorderSizePixel = 0
-    Instance.new("UICorner", rBtn).CornerRadius = UDim.new(0, 6)
-
-    rBtn.MouseButton1Click:Connect(function()
-        AutoHakiRState = not AutoHakiRState
-        rBtn.Text = "R Haki: " .. (AutoHakiRState and "ON" or "OFF")
-        rBtn.BackgroundColor3 = AutoHakiRState and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(60, 60, 62)
-        rBtn.BackgroundTransparency = AutoHakiRState and 0.1 or 0.15
-        
-        -- 🔥 BỎ LOCK CHUỘT
-        -- forceLockMouse(AutoHakiRState or AutoHakiQState)
-    end)
-
-    local qBtn = Instance.new("TextButton", p)
-    qBtn.Size = UDim2.new(0, 140, 0, 32)
-    qBtn.Position = UDim2.new(0, 245, 0, y - 4)
-    qBtn.Text = "Q Haki: OFF"
-    qBtn.Font = Enum.Font.GothamBold
-    qBtn.TextSize = 14
-    qBtn.TextColor3 = Color3.fromRGB(230, 230, 230)
-    qBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 62)
-    qBtn.BackgroundTransparency = 0.15
-    qBtn.BorderSizePixel = 0
-    Instance.new("UICorner", qBtn).CornerRadius = UDim.new(0, 6)
-
-    qBtn.MouseButton1Click:Connect(function()
-        AutoHakiQState = not AutoHakiQState
-        qBtn.Text = "Q Haki: " .. (AutoHakiQState and "ON" or "OFF")
-        qBtn.BackgroundColor3 = AutoHakiQState and Color3.fromRGB(255, 170, 0) or Color3.fromRGB(60, 60, 62)
-        qBtn.BackgroundTransparency = AutoHakiQState and 0.1 or 0.15
-        
-        -- 🔥 BỎ LOCK CHUỘT
-        -- forceLockMouse(AutoHakiRState or AutoHakiQState)
-    end)
-    y = y + 36
+    HakiHoldQBtn = Instance.new("TextButton", p)
+    HakiHoldQBtn.Size = UDim2.new(0, 120, 0, 20)
+    HakiHoldQBtn.Position = UDim2.new(0, 5, 0, y)
+    HakiHoldQBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    HakiHoldQBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    HakiHoldQBtn.Text = "🔘 Also Hold Q: OFF"
+    HakiHoldQBtn.Font = Enum.Font.SourceSans
+    HakiHoldQBtn.TextSize = 12
+    Instance.new("UICorner", HakiHoldQBtn).CornerRadius = UDim.new(0, 6)
+    y = y + 24
 
     GuiPathBox = Instance.new("TextBox", p)
     GuiPathBox.Size = UDim2.new(1, -10, 0, 20)
     GuiPathBox.Position = UDim2.new(0, 5, 0, y)
     GuiPathBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     GuiPathBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    GuiPathBox.PlaceholderText = "Đường dẫn GUI Cooldown (Ex: PlayerGui.SkillGui.RButton.Bar)"
+    GuiPathBox.PlaceholderText = "Auto-detecting GUI..."
     GuiPathBox.ClearTextOnFocus = false
     GuiPathBox.Font = Enum.Font.SourceSans
     GuiPathBox.TextSize = 12
     y = y + 24
 
-    CurrentIntervalLabel = Instance.new("TextLabel", p)
-    CurrentIntervalLabel.Size = UDim2.new(1, -10, 0, 20)
-    CurrentIntervalLabel.Position = UDim2.new(0, 5, 0, y)
-    CurrentIntervalLabel.BackgroundTransparency = 1
-    CurrentIntervalLabel.Text = "Interval: 0.150s | Success Rate: 0%"
-    CurrentIntervalLabel.TextColor3 = Color3.fromRGB(150, 150, 255)
-    CurrentIntervalLabel.TextSize = 12
-    CurrentIntervalLabel.TextXAlignment = Enum.TextXAlignment.Left
-    y = y + 24
+    HakiInfoLabel = Instance.new("TextLabel", p)
+    HakiInfoLabel.Size = UDim2.new(1, -10, 0, 30)
+    HakiInfoLabel.Position = UDim2.new(0, 5, 0, y)
+    HakiInfoLabel.BackgroundTransparency = 1
+    HakiInfoLabel.Text = "Ready... Nhấn F6 để bắt đầu giữ Haki. Sẽ giữ phím 7s sau khi hết cooldown."
+    HakiInfoLabel.TextColor3 = Color3.fromRGB(150, 150, 255)
+    HakiInfoLabel.TextSize = 12
+    HakiInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    HakiInfoLabel.TextYAlignment = Enum.TextYAlignment.Top
+    y = y + 32
 end
 
-local function checkCooldown(targetGUI)
-    if not targetGUI or currentMode == "Spam" then return end
-    
-    local startVal = simpleReadGUI(targetGUI)
-    if not startVal then return end
-    
-    local startTime = tick()
-    local maxWait = 5
-    
-    while tick() - startTime < maxWait and not isEscPressed do 
-        local currentVal = simpleReadGUI(targetGUI)
-        if currentVal and math.abs(currentVal - startVal) > 0.1 then
-            local cooldownStart = tick()
-            while tick() - cooldownStart < maxWait and not isEscPressed do 
-                local checkVal = simpleReadGUI(targetGUI)
-                if checkVal and (checkVal <= 0.05 or checkVal >= 0.95) then
-                    local duration = tick() - CooldownData.lastPressTime
-                    if duration > 0.1 then
-                        table.insert(CooldownData.lastSamples, duration)
-                        if #CooldownData.lastSamples > SAMPLE_WINDOW then
-                            table.remove(CooldownData.lastSamples, 1)
-                        end
-                        CooldownData.successCount = CooldownData.successCount + 1
-                    end
-                    return
-                end
-                task.wait(0.05)
-            end
-            break
+local function updateHakiUI()
+    HakiStatusLabel.Text = string.format("%s | Hold: %ds | Presses: %d",
+        isHoldingHaki and "🟢 ON" or "🔴 OFF",
+        HOLD_DURATION,
+        pressCount
+    )
+    HakiHoldQBtn.Text = string.format("🔘 Also Hold Q: %s", useQKey and "ON" or "OFF")
+    HakiHoldQBtn.BackgroundColor3 = useQKey and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(80, 80, 80)
+end
+
+HakiHoldQBtn.MouseButton1Click:Connect(function()
+    useQKey = not useQKey
+    updateHakiUI()
+    HakiInfoLabel.Text = useQKey and "Giữ cả phím Q & R" or "Chỉ giữ phím R"
+end)
+
+local HOTKEY_TOGGLE = Enum.KeyCode.F6
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == HOTKEY_TOGGLE then
+        isHoldingHaki = not isHoldingHaki
+        if isHoldingHaki then
+            HakiInfoLabel.Text = "Đang chạy... Sẽ giữ phím 7s mỗi lần hết cooldown."
+        else
+            HakiInfoLabel.Text = "Đã dừng. Sẵn sàng chạy lại."
         end
-        task.wait(0.05)
+        updateHakiUI()
     end
+end)
+
+-- ĐỌC GUI VALUE ĐƠN GIẢN
+local function simpleReadGUI_Haki(obj)
+    if not obj then return nil end
+    local ok, val = pcall(function()
+        if obj:IsA("GuiObject") then
+            return obj.Size.X.Scale
+        end
+        return nil
+    end)
+    return ok and val or nil
 end
 
+-- TÌM GUI ĐƠN GIẢN - TRÁNH MEMORY LEAK
+local function simpleFindGUI_Haki()
+    local pg = player:FindFirstChild("PlayerGui")
+    if not pg then return nil end
+    for _, obj in ipairs(pg:GetDescendants()) do
+        if obj:IsA("GuiObject") and (obj.Name:lower():find("bar") or obj.Name:lower():find("cooldown")) then
+            return obj
+        end
+    end
+    return nil
+end
+
+-- Hàm giữ phím (hold)
+local function holdKey(keyName, holdTime)
+    local vim = game:GetService('VirtualInputManager')
+    pcall(function()
+        vim:SendKeyEvent(true, keyName, false, game)
+    end)
+    task.wait(holdTime)
+    pcall(function()
+        vim:SendKeyEvent(false, keyName, false, game)
+    end)
+end
+
+-- VÒNG LẶP CHÍNH
+local mainLoopActive = true
 task.spawn(function()
-    local targetGUI = nil
-    
-    while true do
-        local isAnyHakiActive = AutoHakiRState or AutoHakiQState
-        
-        if isAnyHakiActive and not isEscPressed then 
-            
-            if not targetGUI and (GuiPathBox.Text == "" or GuiPathBox.Text == "Đường dẫn GUI Cooldown (Ex: PlayerGui.SkillGui.RButton.Bar)") then
-                local autoDetected = simpleFindGUI() 
-                if autoDetected then
-                    targetGUI = autoDetected
-                    GuiPathBox.Text = targetGUI:GetFullName()
-                end
-            elseif not targetGUI and GuiPathBox.Text ~= "" then
+    while mainLoopActive do
+        if isHoldingHaki then
+            -- Tìm GUI target (cooldown bar)
+            local targetGUI = nil
+            if GuiPathBox.Text ~= "" and GuiPathBox.Text ~= "Auto-detecting GUI..." then
                 local parts = {}
-                for part in GuiPathBox.Text:gmatch("[^%.]+") do table.insert(parts, part) end
-                
+                for part in GuiPathBox.Text:gmatch("[^%.]+") do
+                    table.insert(parts, part)
+                end
                 local current = game
                 for _, part in ipairs(parts) do
                     current = current:FindFirstChild(part)
@@ -692,54 +676,81 @@ task.spawn(function()
                 end
                 targetGUI = current
             end
-            
-            if AutoHakiRState then
-                CooldownData.pressCount = CooldownData.pressCount + 1
-                CooldownData.lastPressTime = tick()
-                doKeyTap(Enum.KeyCode.R)
-            end
-
-            if AutoHakiQState then
-                doKeyTap(Enum.KeyCode.Q)
-            end
-            
-            local currentWaitTime = DEFAULT_INTERVAL
-            if AutoHakiRState and targetGUI then
-                checkCooldown(targetGUI)
-                if currentMode == "Adaptive" then
-                    currentWaitTime = getSmartInterval()
+            if not targetGUI then
+                targetGUI = simpleFindGUI_Haki()
+                if targetGUI then
+                    GuiPathBox.Text = targetGUI:GetFullName()
                 end
-            elseif currentMode == "Spam" then
-                currentWaitTime = DEFAULT_INTERVAL
             end
 
-            local statusText = AutoHakiRState and "R ACTIVE" or ""
-            statusText = statusText .. (AutoHakiQState and (statusText=="" and "Q ACTIVE" or " & Q ACTIVE") or "")
-            if statusText == "" then statusText = "ON" end
-
-            local successRate = CooldownData.pressCount > 0 and 
-                math.floor((CooldownData.successCount / CooldownData.pressCount) * 100) or 0
-            
-            HakiStatusLabel.Text = string.format("Status: %s | Mode: %s | Presses: %d",
-                statusText, currentMode, CooldownData.pressCount)
-
-            CurrentIntervalLabel.Text = string.format("Interval: %.3fs | Success Rate: %d%%", 
-                currentWaitTime, successRate)
-
-            task.wait(currentWaitTime)
-            
-        else
-            if isEscPressed then
-                 HakiStatusLabel.Text = "Status: ESC PRESSED (Paused)"
+            -- Chờ cooldown kết thúc
+            if targetGUI then
+                HakiInfoLabel.Text = "Đang chờ hết cooldown..."
+                local maxWait = 10
+                local startTime = tick()
+                local inCooldown = false
+                local lastVal = simpleReadGUI_Haki(targetGUI)
+                while tick() - startTime < maxWait do
+                    local curVal = simpleReadGUI_Haki(targetGUI)
+                    if curVal and lastVal and math.abs(curVal - lastVal) > 0.1 then
+                        inCooldown = true
+                        break
+                    end
+                    task.wait(0.05)
+                end
+                -- Đợi cho tới khi cooldown kết thúc (bar đầy hoặc hết)
+                if inCooldown then
+                    local cooldownStart = tick()
+                    while tick() - cooldownStart < maxWait do
+                        local checkVal = simpleReadGUI_Haki(targetGUI)
+                        if checkVal and (checkVal <= 0.05 or checkVal >= 0.95) then
+                            break
+                        end
+                        task.wait(0.05)
+                    end
+                end
             else
-                HakiStatusLabel.Text = "Status: OFF | Mode: " .. currentMode .. " | Rate: 0.15s"
+                HakiInfoLabel.Text = "Không tìm thấy GUI cooldown, sẽ giữ phím mỗi 10s."
+                task.wait(1)
             end
-            
+
+            -- Giữ phím
+            HakiInfoLabel.Text = string.format("Đang giữ phím %s%s...", DEFAULT_KEY, useQKey and (" + " .. SECONDARY_KEY) or "")
+            pressCount = pressCount + 1
+            updateHakiUI()
+
+            -- Giữ phím R (và Q nếu bật) đồng thời
+            local coList = {}
+            table.insert(coList, coroutine.create(function() holdKey(DEFAULT_KEY, HOLD_DURATION) end))
+            if useQKey then
+                table.insert(coList, coroutine.create(function() holdKey(SECONDARY_KEY, HOLD_DURATION) end))
+            end
+            for _, co in ipairs(coList) do coroutine.resume(co) end
+            task.wait(HOLD_DURATION + 0.2)
+            HakiInfoLabel.Text = "Đã giữ phím xong, chờ cooldown tiếp theo..."
+            updateHakiUI()
+
+        else
             task.wait(0.5)
         end
     end
 end)
 
+-- Auto-detect GUI khi start
+task.spawn(function()
+    task.wait(2)
+    local gui = simpleFindGUI_Haki()
+    if gui then
+        GuiPathBox.Text = gui:GetFullName()
+        HakiInfoLabel.Text = "Auto-detected: " .. gui.Name
+    else
+        HakiInfoLabel.Text = "Không tìm thấy GUI cooldown tự động. Hãy nhập thủ công nếu cần."
+    end
+end)
+
+player.AncestryChanged:Connect(function()
+    mainLoopActive = false
+end)
 
 -- ================================================================= --
 --                             FRUIT MIX PANEL (GIỮ NGUYÊN)
