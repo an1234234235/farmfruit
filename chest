@@ -10,6 +10,8 @@ local TP_DELAY = 0.05
 local AUTO_ON = true
 local SERVERHOP_URL = "https://pastebin.com/raw/Ru4UQDpN"
 local serverHopExecuted = false
+local chestFailCount = 0
+local maxFailCount = 8 -- thử tối đa 8 lần không pick được chest thì hop
 
 -- ===== UI + Overlay (rất mờ) =====
 local function createUI()
@@ -221,12 +223,13 @@ local function execPastebinServerHop()
     end)
 end
 
--- ===== Main loop: auto farm; if no chest -> exec pastebin server hop =====
+-- ===== Main loop: auto farm; nếu pick fail nhiều lần hoặc không có chest thì hop server =====
 task.spawn(function()
     while true do
         if not AUTO_ON then break end
         local hrp = getHRP()
         local foundAnyChest = false
+        local pickedChestThisLoop = false
 
         local chestFolder = workspace:FindFirstChild("Chests")
         if chestFolder and hrp then
@@ -241,8 +244,12 @@ task.spawn(function()
                     end
                     if pos and (hrp.Position - pos).Magnitude <= RANGE then
                         foundAnyChest = true
+                        local oldChestCount = chestCount
                         tpTo(pos)
                         task.wait(TP_DELAY)
+                        if chestCount > oldChestCount then
+                            pickedChestThisLoop = true
+                        end
                     end
                 end
             end
@@ -252,16 +259,25 @@ task.spawn(function()
                 for _, v in pairs(workspace:GetDescendants()) do
                     if (v:IsA("Part") or v:IsA("MeshPart")) and v.Name and tostring(v.Name):lower():find("chest") then
                         foundAnyChest = true
+                        local oldChestCount = chestCount
                         tpTo(v.Position)
                         task.wait(TP_DELAY)
+                        if chestCount > oldChestCount then
+                            pickedChestThisLoop = true
+                        end
                     end
                 end
             end
         end
 
-        if not foundAnyChest then
-            -- no chest: execute pastebin line
-            statusLabel.Text = "Status: No chest found -> running pastebin hop"
+        if not pickedChestThisLoop then
+            chestFailCount = chestFailCount + 1
+        else
+            chestFailCount = 0
+        end
+
+        if chestFailCount >= maxFailCount or not foundAnyChest then
+            statusLabel.Text = "Status: Auto hop server vì không pick được chest"
             AUTO_ON = false
             execPastebinServerHop()
             break
