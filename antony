@@ -725,19 +725,11 @@ local mainLoopActive = true
 task.spawn(function()
     while mainLoopActive do
         if isHoldingHaki then
-            -- Tìm GUI target (cooldown bar)
+            -- Tìm GUI cooldown
             local targetGUI = nil
             if GuiPathBox.Text ~= "" and GuiPathBox.Text ~= "Auto-detecting GUI..." then
-                local parts = {}
-                for part in GuiPathBox.Text:gmatch("[^%.]+") do
-                    table.insert(parts, part)
-                end
-                local current = game
-                for _, part in ipairs(parts) do
-                    current = current:FindFirstChild(part)
-                    if not current then break end
-                end
-                targetGUI = current
+                local ok, obj = pcall(function() return game:FindFirstChild(GuiPathBox.Text, true) end)
+                if ok then targetGUI = obj end
             end
             if not targetGUI then
                 targetGUI = simpleFindGUI_Haki()
@@ -746,58 +738,54 @@ task.spawn(function()
                 end
             end
 
-            -- Chờ cooldown kết thúc
-            if targetGUI then
-                HakiInfoLabel.Text = "Đang chờ hết cooldown..."
-                local maxWait = 10
-                local startTime = tick()
-                local inCooldown = false
-                local lastVal = simpleReadGUI_Haki(targetGUI)
-                while tick() - startTime < maxWait do
+            -- Nếu vẫn không có GUI → giữ phím định kỳ mỗi 10s để tránh treo
+            if not targetGUI then
+                HakiInfoLabel.Text = "Không tìm thấy GUI cooldown → fallback giữ phím 10s."
+                pressCount += 1
+                updateHakiUI()
+                holdKey(DEFAULT_KEY, HOLD_DURATION)
+                if useQKey then holdKey(SECONDARY_KEY, HOLD_DURATION) end
+                task.wait(HOLD_DURATION + 1)
+                continue
+            end
+
+            -- Theo dõi cooldown bar, có timeout cứng
+            local cooldownStart = tick()
+            local maxWait = 15
+            local prevVal = simpleReadGUI_Haki(targetGUI)
+            local startedCooldown = false
+
+            while tick() - cooldownStart < maxWait do
+                local curVal = simpleReadGUI_Haki(targetGUI)
+                if curVal and prevVal and math.abs(curVal - prevVal) > 0.1 then
+                    startedCooldown = true
+                    break
+                end
+                task.wait(0.1)
+            end
+
+            if startedCooldown then
+                local cooldownTimeout = tick()
+                while tick() - cooldownTimeout < maxWait do
                     local curVal = simpleReadGUI_Haki(targetGUI)
-                    if curVal and lastVal and math.abs(curVal - lastVal) > 0.1 then
-                        inCooldown = true
+                    if curVal and (curVal <= 0.05 or curVal >= 0.95) then
                         break
                     end
-                    task.wait(0.05)
+                    task.wait(0.1)
                 end
-                -- Đợi cho tới khi cooldown kết thúc (bar đầy hoặc hết)
-                if inCooldown then
-                    local cooldownStart = tick()
-                    while tick() - cooldownStart < maxWait do
-                        local checkVal = simpleReadGUI_Haki(targetGUI)
-                        if checkVal and (checkVal <= 0.05 or checkVal >= 0.95) then
-                            break
-                        end
-                        task.wait(0.05)
-                    end
-                end
-            else
-                HakiInfoLabel.Text = "Không tìm thấy GUI cooldown, sẽ giữ phím mỗi 10s."
-                task.wait(1)
             end
 
-            -- Giữ phím
+            -- Sau cooldown → giữ phím R/Q
+            pressCount += 1
+            updateHakiUI()
             HakiInfoLabel.Text = string.format("Đang giữ phím %s%s...", DEFAULT_KEY, useQKey and (" + " .. SECONDARY_KEY) or "")
-            pressCount = pressCount + 1
-            updateHakiUI()
-
-            -- Giữ phím R (và Q nếu bật) đồng thời
-            local coList = {}
-            table.insert(coList, coroutine.create(function() holdKey(DEFAULT_KEY, HOLD_DURATION) end))
+            local coR = coroutine.create(function() holdKey(DEFAULT_KEY, HOLD_DURATION) end)
+            coroutine.resume(coR)
             if useQKey then
-                table.insert(coList, coroutine.create(function() holdKey(SECONDARY_KEY, HOLD_DURATION) end))
+                local coQ = coroutine.create(function() holdKey(SECONDARY_KEY, HOLD_DURATION) end)
+                coroutine.resume(coQ)
             end
-            for _, co in ipairs(coList) do coroutine.resume(co) end
-            task.wait(HOLD_DURATION + 0.2)
-            HakiInfoLabel.Text = "Đã giữ phím xong, chờ cooldown tiếp theo..."
-            updateHakiUI()
-
-        else
-            task.wait(0.5)
-        end
-    end
-end)
+            task.wait(HOLD_DURATION + 0.5)
 
 -- Auto-detect GUI khi start
 task.spawn(function()
