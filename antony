@@ -720,12 +720,12 @@ local function holdKey(keyName, holdTime)
     end)
 end
 
--- VÒNG LẶP CHÍNH
+-- VÒNG LẶP CHÍNH (ĐÃ FIX AUTO HAKI BỊ TREO)
 local mainLoopActive = true
 task.spawn(function()
     while mainLoopActive do
         if isHoldingHaki then
-            -- Tìm GUI cooldown
+            -- 🔍 Tìm GUI cooldown
             local targetGUI = nil
             if GuiPathBox.Text ~= "" and GuiPathBox.Text ~= "Auto-detecting GUI..." then
                 local ok, obj = pcall(function() return game:FindFirstChild(GuiPathBox.Text, true) end)
@@ -738,18 +738,23 @@ task.spawn(function()
                 end
             end
 
-            -- Nếu vẫn không có GUI → giữ phím định kỳ mỗi 10s để tránh treo
+            -- ⏰ Nếu không có GUI → fallback giữ phím định kỳ
             if not targetGUI then
-                HakiInfoLabel.Text = "Không tìm thấy GUI cooldown → fallback giữ phím 10s."
-                pressCount += 1
+                HakiInfoLabel.Text = "⚠ Không tìm thấy GUI cooldown → fallback giữ phím 10s."
+                pressCount = pressCount + 1
                 updateHakiUI()
-                holdKey(DEFAULT_KEY, HOLD_DURATION)
-                if useQKey then holdKey(SECONDARY_KEY, HOLD_DURATION) end
+                local coR = coroutine.create(function() holdKey(DEFAULT_KEY, HOLD_DURATION) end)
+                coroutine.resume(coR)
+                if useQKey then
+                    local coQ = coroutine.create(function() holdKey(SECONDARY_KEY, HOLD_DURATION) end)
+                    coroutine.resume(coQ)
+                end
                 task.wait(HOLD_DURATION + 1)
                 continue
             end
 
-            -- Theo dõi cooldown bar, có timeout cứng
+            -- 🕒 Theo dõi cooldown bar với timeout cứng
+            HakiInfoLabel.Text = "⏳ Đang chờ hết cooldown..."
             local cooldownStart = tick()
             local maxWait = 15
             local prevVal = simpleReadGUI_Haki(targetGUI)
@@ -764,6 +769,7 @@ task.spawn(function()
                 task.wait(0.1)
             end
 
+            -- ⏳ Đợi cooldown kết thúc hoặc timeout
             if startedCooldown then
                 local cooldownTimeout = tick()
                 while tick() - cooldownTimeout < maxWait do
@@ -775,18 +781,27 @@ task.spawn(function()
                 end
             end
 
-            -- Sau cooldown → giữ phím R/Q
-            pressCount += 1
+            -- 💪 Giữ phím R (và Q nếu bật)
+            pressCount = pressCount + 1
             updateHakiUI()
-            HakiInfoLabel.Text = string.format("Đang giữ phím %s%s...", DEFAULT_KEY, useQKey and (" + " .. SECONDARY_KEY) or "")
+            HakiInfoLabel.Text = string.format("🟢 Đang giữ phím %s%s...", DEFAULT_KEY, useQKey and (" + " .. SECONDARY_KEY) or "")
+
             local coR = coroutine.create(function() holdKey(DEFAULT_KEY, HOLD_DURATION) end)
             coroutine.resume(coR)
             if useQKey then
                 local coQ = coroutine.create(function() holdKey(SECONDARY_KEY, HOLD_DURATION) end)
                 coroutine.resume(coQ)
             end
-            task.wait(HOLD_DURATION + 0.5)
 
+            task.wait(HOLD_DURATION + 0.5)
+            HakiInfoLabel.Text = "✅ Đã giữ phím xong, chờ cooldown tiếp theo..."
+            updateHakiUI()
+
+        else
+            task.wait(0.5)
+        end
+    end
+end)
 -- Auto-detect GUI khi start
 task.spawn(function()
     task.wait(2)
