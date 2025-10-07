@@ -8,6 +8,7 @@ local farming = false
 local killCount = 0
 
 local blacklist = {
+   ["Lv40 Cave Demon"] = true,
     ["Lv200 Vokun"] = true,
 }
 
